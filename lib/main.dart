@@ -3,8 +3,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_csv/flutter_csv.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
-void main() => runApp(const ECGViewer());
 
+
+void main() => runApp(const ECGViewer());
 
 class ECGViewer extends StatelessWidget {
   const ECGViewer({super.key});
@@ -106,6 +107,8 @@ class _HomePageState extends State<HomePage> {
 class GraphiksWidget extends StatelessWidget {
   final List<FlSpot> spots;
 
+  static const List<int> peaks = [100, 200, 300, 400, 500];
+
   const GraphiksWidget({
     required this.spots,
     super.key,
@@ -189,23 +192,44 @@ class GraphiksWidget extends StatelessWidget {
               color: Colors.black,
               width: 1,
             )
-          )
+          ),
+          extraLinesData: ExtraLinesData(
+          verticalLines: _buildVerticalLines(),
         )
+      )
     );
   }
-}
 
-Widget customText(double value, TitleMeta meta) {
-  return Padding(
-    padding: const EdgeInsets.all(10),
-    child: Text(
-      value.toStringAsFixed(2),
-      textAlign: TextAlign.right,
-      style: const TextStyle(
-        color: Colors.black,
-        fontSize: 15,
-        letterSpacing: 1.2,
+  List<VerticalLine> _buildVerticalLines() {
+      List<VerticalLine> lines = [];
+      
+      for (int index in peaks) {
+        if (index >= 0 && index < spots.length) {
+          final x = spots[index].x;
+          lines.add(
+            VerticalLine(
+              x: x,
+              color: Colors.red,
+              strokeWidth: 2,
+            ),
+          );
+        }
+      }
+      return lines;
+    }
+
+  Widget customText(double value, TitleMeta meta) {
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: Text(
+        value.toStringAsFixed(2),
+        textAlign: TextAlign.right,
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 15,
+          letterSpacing: 1.2,
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
