@@ -142,7 +142,7 @@ class HomePage extends StatelessWidget {
             constrained: false,      // Позволяем контенту быть больше экрана
             child: SizedBox(
               height: 600,
-              width: size.toDouble()*50,           // Ширина графика для перетаскивания
+              width: size.toDouble()*25,           // Ширина графика для перетаскивания
               child: GraphiksWidget(spots: spots),
             ),
           ),
@@ -176,7 +176,7 @@ class GraphiksWidget extends StatelessWidget {
           titlesData: FlTitlesData(
             show: true,
             topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
+              sideTitles: SideTitles(showTitles: true,  reservedSize: 5),
             ),
             rightTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
