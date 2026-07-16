@@ -1,112 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_csv/flutter_csv.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
-
-const List<FlSpot> spots = [
-  FlSpot(0, 0),
-  FlSpot(1, 1),
-  FlSpot(2, 2),
-  FlSpot(3, 3),
-  FlSpot(4, 4),
-  FlSpot(5, 5),
-  FlSpot(6, 0),
-  FlSpot(7, 1),
-  FlSpot(8, 2),
-  FlSpot(9, 3),
-  FlSpot(10, 5),
-  FlSpot(11, 0),
-  FlSpot(12, 1),
-  FlSpot(13, 2),
-  FlSpot(14, 3),
-  FlSpot(15, 4),
-  FlSpot(16, 5),
-  FlSpot(17, 0),
-  FlSpot(18, 1),
-  FlSpot(19, 2),
-  FlSpot(20, 3),
-  FlSpot(21, 4),
-  FlSpot(22, 5),
-  FlSpot(23, 5),
-  FlSpot(24, 0),
-  FlSpot(25, 1),
-  FlSpot(26, 2),
-  FlSpot(27, 3),
-  FlSpot(28, 4),
-  FlSpot(29, 5),
-  FlSpot(30, 0),
-  FlSpot(31, 1),
-  FlSpot(32, 2),
-  FlSpot(33, 3),
-  FlSpot(34, 4),
-  FlSpot(35, 5),
-  FlSpot(36, 0),
-  FlSpot(37, 1),
-  FlSpot(38, 2),
-  FlSpot(39, 3),
-  FlSpot(40, 4),
-  FlSpot(41, 5),
-  FlSpot(42, 0),
-  FlSpot(43, 1),
-  FlSpot(44, 2),
-  FlSpot(45, 3),
-  FlSpot(46, 5),
-  FlSpot(47, 0),
-  FlSpot(48, 1),
-  FlSpot(49, 2),
-  FlSpot(50, 3),
-  FlSpot(51, 4),
-  FlSpot(52, 5),
-  FlSpot(53, 0),
-  FlSpot(54, 1),
-  FlSpot(55, 2),
-  FlSpot(56, 3),
-  FlSpot(57, 4),
-  FlSpot(58, 5),
-  FlSpot(59, 5),
-  FlSpot(60, 0),
-  FlSpot(61, 1),
-  FlSpot(62, 2),
-  FlSpot(63, 3),
-  FlSpot(64, 4),
-  FlSpot(65, 5),
-  FlSpot(66, 0),
-  FlSpot(67, 1),
-  FlSpot(68, 2),
-  FlSpot(69, 3),
-  FlSpot(70, 4),
-  FlSpot(71, 5),
-  FlSpot(72, 0),
-  FlSpot(73, 1),
-  FlSpot(74, 2),
-  FlSpot(75, 3),
-  FlSpot(76, 4),
-  FlSpot(77, 5),
-  FlSpot(78, 0),
-  FlSpot(79, 1),
-  FlSpot(80, 2),
-  FlSpot(81, 3),
-  FlSpot(82, 5),
-  FlSpot(83, 0),
-  FlSpot(84, 1),
-  FlSpot(85, 2),
-  FlSpot(86, 3),
-  FlSpot(87, 4),
-  FlSpot(88, 5),
-  FlSpot(89, 0),
-  FlSpot(90, 1),
-  FlSpot(91, 2),
-  FlSpot(92, 3),
-  FlSpot(93, 4),
-  FlSpot(94, 5),
-  FlSpot(95, 5),
-  FlSpot(96, 0),
-  FlSpot(97, 1),
-  FlSpot(98, 2),
-  FlSpot(99, 3),
-  FlSpot(100, 4)
-];
-int size = spots.length;
 void main() => runApp(const ECGViewer());
+
 
 class ECGViewer extends StatelessWidget {
   const ECGViewer({super.key});
@@ -115,42 +13,95 @@ class ECGViewer extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: HomePage(size)
+      home: const HomePage(),
     );
   }
 }
 
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
-class HomePage extends StatelessWidget {
-  final int size;
-  const HomePage(this.size, {super.key});
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  Future<List<FlSpot>>? _futureSpots;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureSpots = loadCsvData();
+  }
+
+  Future<List<FlSpot>> loadCsvData() async {
+    try {
+      final rawData = await rootBundle.loadString('assets/data.csv');
+      
+      final doc = FlutterCsv.parseDocument(
+        rawData,
+        firstRowIsHeader: true,
+      );
+      
+      final data = doc.data;
+      
+      List<FlSpot> spots = [];
+      
+      for (var row in data) {
+        if (row.length >= 2) {
+          double x = double.parse(row[0].toString());
+          double y = double.parse(row[1].toString());
+          spots.add(FlSpot(x, y));
+        }
+      }
+      return spots;
+    } catch (e) {
+
+      return [];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromRGBO(239, 239, 239, 1),
+      backgroundColor: const Color.fromRGBO(239, 239, 239, 1),
       appBar: AppBar(
-        title: const Text('ECG Viewer', style: TextStyle(color: Color.fromRGBO(255, 255, 255, 1))),
-        backgroundColor: Color.fromRGBO(52, 179, 171, 1)
+        title: const Text('ECG Viewer', style: TextStyle(color: Colors.white),),
+        backgroundColor: const Color.fromRGBO(52, 179, 171, 1),
       ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(50),
-          child: InteractiveViewer(
-            panEnabled: true,        // Включаем перетаскивание
-            scaleEnabled: true,     // Отключаем масштабирование
-            constrained: false,      // Позволяем контенту быть больше экрана
-            child: SizedBox(
-              height: 600,
-              width: size.toDouble()*25,           // Ширина графика для перетаскивания
-              child: GraphiksWidget(spots: spots),
-            ),
+          child: FutureBuilder<List<FlSpot>>(
+            future: _futureSpots,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const CircularProgressIndicator();
+              } else if (snapshot.hasError) {
+                return Text('Ошибка: ${snapshot.error}');
+              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Text('Нет данных');
+              }
+              
+              final spots = snapshot.data!;
+              return InteractiveViewer(
+                panEnabled: true,
+                scaleEnabled: true,
+                constrained: false,
+                child: SizedBox(
+                  height: 600,
+                  width: spots.length * 25,
+                  child: GraphiksWidget(spots: spots),
+                ),
+              );
+            },
           ),
         ),
-      )
+      ),
     );
   }
 }
+
 
 class GraphiksWidget extends StatelessWidget {
   final List<FlSpot> spots;
