@@ -73,6 +73,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.2.0"
+  fl_pretty_charts:
+    dependency: "direct main"
+    description:
+      name: fl_pretty_charts
+      sha256: "8098f7fa9d666d876c070c50eff404ebc265ad2a23121f058e797f2462044370"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.4.0"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -91,6 +99,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  gestures:
+    dependency: "direct main"
+    description:
+      name: gestures
+      sha256: "6e75e4ba1ad033a8be9a682974dfe6a2be96ab07b4aa8335ed37bbecb75b7770"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.0.0"
   leak_tracker:
     dependency: transitive
     description:

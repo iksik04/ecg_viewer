@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
+
 const List<FlSpot> spots = [
   FlSpot(0, 0),
   FlSpot(1, 1),
@@ -104,7 +105,7 @@ const List<FlSpot> spots = [
   FlSpot(99, 3),
   FlSpot(100, 4)
 ];
-
+int size = spots.length;
 void main() => runApp(const ECGViewer());
 
 class ECGViewer extends StatelessWidget {
@@ -114,13 +115,15 @@ class ECGViewer extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: HomePage()
+      home: HomePage(size)
     );
   }
 }
 
+
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  final int size;
+  const HomePage(this.size, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -130,11 +133,20 @@ class HomePage extends StatelessWidget {
         title: const Text('ECG Viewer', style: TextStyle(color: Color.fromRGBO(255, 255, 255, 1))),
         backgroundColor: Color.fromRGBO(52, 179, 171, 1)
       ),
-      body:  Center(
+      body: Center(
         child: Padding(
           padding: const EdgeInsets.all(50),
-          child: GraphiksWidget(spots: spots)
-        )
+          child: InteractiveViewer(
+            panEnabled: true,        // Включаем перетаскивание
+            scaleEnabled: true,     // Отключаем масштабирование
+            constrained: false,      // Позволяем контенту быть больше экрана
+            child: SizedBox(
+              height: 600,
+              width: size.toDouble()*50,           // Ширина графика для перетаскивания
+              child: GraphiksWidget(spots: spots),
+            ),
+          ),
+        ),
       )
     );
   }
@@ -152,7 +164,7 @@ class GraphiksWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return LineChart(
         LineChartData(
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.white, 
           lineBarsData: [ LineChartBarData(
               spots: spots,
               isCurved: false,
