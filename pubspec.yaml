@@ -37,6 +37,7 @@ dependencies:
   fl_chart: ^1.2.0
   fl_pretty_charts: ^2.4.0
   gestures: ^1.0.0
+  material: ^1.0.1
 
 dev_dependencies:
   flutter_test:
