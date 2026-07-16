@@ -36,7 +36,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<List<FlSpot>> loadCsvData() async {
     try {
-      final rawData = await rootBundle.loadString('assets/data.csv');
+      final rawData = await rootBundle.loadString('assets/100.csv');
       
       final doc = FlutterCsv.parseDocument(
         rawData,
@@ -90,7 +90,7 @@ class _HomePageState extends State<HomePage> {
                 constrained: false,
                 child: SizedBox(
                   height: 600,
-                  width: spots.length * 25,
+                  width: spots.length.toDouble(),
                   child: GraphiksWidget(spots: spots),
                 ),
               );
@@ -134,7 +134,7 @@ class GraphiksWidget extends StatelessWidget {
             ),
             bottomTitles: AxisTitles(
               axisNameWidget: const Text(
-                'x',
+                'Time, sec',
                 style: TextStyle(
                   color: Colors.black,
                   fontSize: 20,
@@ -143,14 +143,14 @@ class GraphiksWidget extends StatelessWidget {
               axisNameSize: 30,
               sideTitles: SideTitles(
                 showTitles: true,
-                interval: 5,
+                interval: 0.5,
                 reservedSize: 40,
                 getTitlesWidget: (value, meta) => customText(value, meta),
               ),
             ),
             leftTitles: AxisTitles(
               axisNameWidget: const Text(
-                'y(x)',
+                'Voltage, mV',
                 style: TextStyle(
                   color: Colors.black,
                   fontSize: 20,
@@ -159,8 +159,8 @@ class GraphiksWidget extends StatelessWidget {
               axisNameSize: 30,
               sideTitles: SideTitles(
                 showTitles: true,
-                interval: 1,
-                reservedSize: 45,
+                interval: 0.5,
+                reservedSize: 60,
                 getTitlesWidget: (value, meta) => customText(value, meta),
               ),
             ),
@@ -168,8 +168,8 @@ class GraphiksWidget extends StatelessWidget {
           gridData: FlGridData(
             show: true,
             drawVerticalLine: true,
-            horizontalInterval: 1,
-            verticalInterval: 5,
+            horizontalInterval: 0.1,
+            verticalInterval: 0.1,
             getDrawingHorizontalLine: (value) {
               return const FlLine(
                 color: Colors.grey,
@@ -199,7 +199,7 @@ Widget customText(double value, TitleMeta meta) {
   return Padding(
     padding: const EdgeInsets.all(10),
     child: Text(
-      '$value',
+      value.toStringAsFixed(2),
       textAlign: TextAlign.right,
       style: const TextStyle(
         color: Colors.black,
