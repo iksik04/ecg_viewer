@@ -74,7 +74,7 @@ class _HomePageState extends State<HomePage> {
         child: Padding(
           padding: const EdgeInsets.all(50),
           child: FutureBuilder<List<FlSpot>>(
-            future: _futureSpots,
+            future: _futureSpots, 
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const CircularProgressIndicator();
@@ -85,6 +85,7 @@ class _HomePageState extends State<HomePage> {
               }
               
               final spots = snapshot.data!;
+              final peaks = [100];
               return InteractiveViewer(
                 panEnabled: true,
                 scaleEnabled: true,
@@ -92,7 +93,7 @@ class _HomePageState extends State<HomePage> {
                 child: SizedBox(
                   height: 600,
                   width: spots.length.toDouble(),
-                  child: GraphiksWidget(spots: spots),
+                  child: GraphiksWidget(spots: spots, peaks: peaks),
                 ),
               );
             },
@@ -107,10 +108,10 @@ class _HomePageState extends State<HomePage> {
 class GraphiksWidget extends StatelessWidget {
   final List<FlSpot> spots;
 
-  static const List<int> peaks = [100, 200, 300, 400, 500];
+  final List<int> peaks;
 
   const GraphiksWidget({
-    required this.spots,
+    required this.spots, required this.peaks,
     super.key,
   });
 
