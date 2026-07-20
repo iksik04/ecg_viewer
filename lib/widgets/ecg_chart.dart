@@ -48,11 +48,9 @@ class _ECGChartState extends State<ECGChart> {
         titlesData: _buildTitlesData(),
         gridData: _buildGridData(),
         borderData: _buildBorderData(),
-        // ВЕРТИКАЛЬНЫЕ ЛИНИИ ДЛЯ ПИКОВ
         extraLinesData: ExtraLinesData(
           verticalLines: visiblePeaks,
         ),
-        // ГРАНИЦЫ БЕРЕМ ИЗ РЕАЛЬНЫХ ДАННЫХ
         minX: visibleSpots.first.x,
         maxX: visibleSpots.last.x,
         minY: _getMinY(visibleSpots),
@@ -74,8 +72,6 @@ class _ECGChartState extends State<ECGChart> {
     );
   }
 
-  // Формируем список вертикальных линий для пиков
-  // Убрали расчет границ Y, чтобы рисовать линии на всю высоту
   List<VerticalLine> _getVisiblePeaks() {
     final start = widget.startIndex;
     final end = start + widget.pointsPerScreen;
@@ -86,9 +82,8 @@ class _ECGChartState extends State<ECGChart> {
           final spot = widget.data.spots[index];
           return VerticalLine(
             x: spot.x,
-            // Не указываем startY и endY / y и y2 - линия рисуется на всю высоту автоматически
             color: AppColors.peakLine,
-            strokeWidth: 1.5,
+            strokeWidth: 2,
             dashArray: const [4, 4], 
           );
         })
@@ -122,9 +117,9 @@ class _ECGChartState extends State<ECGChart> {
         axisNameSize: 30,
         sideTitles: SideTitles(
           showTitles: true,
-          interval: 0.5,
+          interval: 1,
           reservedSize: 40,
-          getTitlesWidget: _customTextWidget,
+          getTitlesWidget: _customBottomTextWidget,
         ),
       ),
       leftTitles: AxisTitles(
@@ -135,9 +130,9 @@ class _ECGChartState extends State<ECGChart> {
         axisNameSize: 30,
         sideTitles: SideTitles(
           showTitles: true,
-          interval: 0.1,
+          interval: 0.5,
           reservedSize: 60,
-          getTitlesWidget: _customTextWidget,
+          getTitlesWidget: _customLeftTextWidget,
         ),
       ),
     );
@@ -174,11 +169,34 @@ class _ECGChartState extends State<ECGChart> {
     );
   }
 
-  Widget _customTextWidget(double value, TitleMeta meta) {
+  Widget _customLeftTextWidget(double value, TitleMeta meta) {
+    final min = meta.min;
+    final max = meta.max;
+                   
+    if (value == min || value == max) {
+      return const SizedBox.shrink();
+    }
     return Padding(
       padding: const EdgeInsets.all(10),
       child: Text(
-        value.toStringAsFixed(2),
+        value.toStringAsFixed(1),
+        textAlign: TextAlign.right,
+        style: AppTextStyles.axisValue,
+      ),
+    );
+  }
+
+    Widget _customBottomTextWidget(double value, TitleMeta meta) {
+    final min = meta.min;
+    final max = meta.max;
+                   
+    if (value == min || value == max) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: Text(
+        value.toStringAsFixed(0),
         textAlign: TextAlign.right,
         style: AppTextStyles.axisValue,
       ),

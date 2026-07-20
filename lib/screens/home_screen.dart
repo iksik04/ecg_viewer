@@ -18,9 +18,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<ECGData>? _futureData;
   int _currentNumber = 100;
   
-  // Пагинация теперь оперирует индексами, а не временем
   int _currentStartIndex = 0;
-  int _pointsPerScreen = 200; // Количество точек на экран
+  int _pointsPerScreen = 200;
 
   @override
   void initState() {
@@ -36,17 +35,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // Рассчитываем сколько точек влазит на экран, учитывая реальный шаг времени в данных
-  int _calculatePointsPerScreen(double containerWidth, List<FlSpot> spots) {
+  int _calculatePointsPerScreen(double containerWidth, List<FlSpot> spots, double targetSecondsPerScreen) {
     if (spots.isEmpty) return 200;
     
     // Находим средний шаг по времени между точками
-    final double timeStep = spots.length > 1 ? spots[1].x - spots[0].x : 0.01;
-    
-    // Определяем, сколько секунд мы хотим видеть на экране (например, 5 секунд)
-    const double targetSecondsPerScreen = 5.0; 
-    
-    // Вычисляем количество точек, соответствующее этим 5 секундам
+    final double timeStep = spots.length > 1 ? spots[1].x - spots[0].x : 0.01; 
+  
     int pointsByTime = (targetSecondsPerScreen / timeStep).round();
     
     // Ограничиваем, чтобы не вылететь за пределы массива
@@ -238,8 +232,9 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = snapshot.data!;
         return LayoutBuilder(
           builder: (context, constraints) {
-            // Правильный пересчет точек, основанный на времени (внутри функции)
-            final pointsPerScreen = _calculatePointsPerScreen(constraints.maxWidth, data.spots);
+            // Определяем, сколько секунд мы хотим видеть на экране (например, 5 секунд)
+            const double targetSecondsPerScreen = 10.0;
+            final pointsPerScreen = _calculatePointsPerScreen(constraints.maxWidth, data.spots, targetSecondsPerScreen);
             // Сохраняем его в стейт для слайдера и пагинации
             if (pointsPerScreen != _pointsPerScreen) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
