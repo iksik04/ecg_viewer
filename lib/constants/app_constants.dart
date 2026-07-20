@@ -84,6 +84,6 @@ class AppStrings {
   static const String errorLoading = 'Ошибка загрузки данных:';
   
   // Пути к файлам 
-  static const String dataFilePath = 'assets/data/';
+  static const String dataFilePath = 'assets/data/MIT-BIH/';
   static const String peaksFilePath = 'assets/peaks/';
 }
