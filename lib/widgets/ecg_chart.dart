@@ -23,13 +23,14 @@ class _ECGChartState extends State<ECGChart> {
   @override
   Widget build(BuildContext context) {
     final visibleSpots = _getVisibleSpots();
-    final visiblePeakSpots = _getVisiblePeakSpots();
 
     if (visibleSpots.isEmpty) {
       return const Center(
         child: Text('Нет данных для отображения'),
       );
     }
+
+    final visiblePeaks = _getVisiblePeaks();
 
     return LineChart(
       LineChartData(
@@ -43,33 +44,17 @@ class _ECGChartState extends State<ECGChart> {
             barWidth: 2,
             dotData: const FlDotData(show: false),
           ),
-          // Отображение пиков (как точки на графике поверх линии)
-          if (visiblePeakSpots.isNotEmpty)
-            LineChartBarData(
-              spots: visiblePeakSpots,
-              isCurved: false,
-              color: AppColors.peakLine,
-              barWidth: 4,
-              dotData: FlDotData(
-                show: true,
-                getDotPainter: (spot, percent, barData, index) {
-                  return FlDotCirclePainter(
-                    radius: 6,
-                    color: AppColors.peakLine,
-                    strokeWidth: 2,
-                    strokeColor: Colors.white,
-                  );
-                },
-              ),
-            ),
         ],
         titlesData: _buildTitlesData(),
         gridData: _buildGridData(),
         borderData: _buildBorderData(),
+        // ВЕРТИКАЛЬНЫЕ ЛИНИИ ДЛЯ ПИКОВ
+        extraLinesData: ExtraLinesData(
+          verticalLines: visiblePeaks,
+        ),
         // ГРАНИЦЫ БЕРЕМ ИЗ РЕАЛЬНЫХ ДАННЫХ
         minX: visibleSpots.first.x,
         maxX: visibleSpots.last.x,
-        // Границы Y рассчитываем с отступом
         minY: _getMinY(visibleSpots),
         maxY: _getMaxY(visibleSpots),
       ),
@@ -89,14 +74,24 @@ class _ECGChartState extends State<ECGChart> {
     );
   }
 
-  // Получаем координаты только для пиков, попавших в текущий диапазон
-  List<FlSpot> _getVisiblePeakSpots() {
+  // Формируем список вертикальных линий для пиков
+  // Убрали расчет границ Y, чтобы рисовать линии на всю высоту
+  List<VerticalLine> _getVisiblePeaks() {
     final start = widget.startIndex;
     final end = start + widget.pointsPerScreen;
     
     return widget.data.peaks
         .where((index) => index >= start && index < end)
-        .map((index) => widget.data.spots[index])
+        .map((index) {
+          final spot = widget.data.spots[index];
+          return VerticalLine(
+            x: spot.x,
+            // Не указываем startY и endY / y и y2 - линия рисуется на всю высоту автоматически
+            color: AppColors.peakLine,
+            strokeWidth: 1.5,
+            dashArray: const [4, 4], 
+          );
+        })
         .toList();
   }
 
@@ -127,9 +122,9 @@ class _ECGChartState extends State<ECGChart> {
         axisNameSize: 30,
         sideTitles: SideTitles(
           showTitles: true,
-          interval: 1,
+          interval: 0.5,
           reservedSize: 40,
-          getTitlesWidget: _customBottomTextWidget,
+          getTitlesWidget: _customTextWidget,
         ),
       ),
       leftTitles: AxisTitles(
@@ -140,9 +135,9 @@ class _ECGChartState extends State<ECGChart> {
         axisNameSize: 30,
         sideTitles: SideTitles(
           showTitles: true,
-          interval: 0.5, // Уменьшил интервал для большей точности
+          interval: 0.1,
           reservedSize: 60,
-          getTitlesWidget: _customRightTextWidget,
+          getTitlesWidget: _customTextWidget,
         ),
       ),
     );
@@ -179,18 +174,7 @@ class _ECGChartState extends State<ECGChart> {
     );
   }
 
-  Widget _customBottomTextWidget(double value, TitleMeta meta) {
-    return Padding(
-      padding: const EdgeInsets.all(10),
-      child: Text(
-        value.toStringAsFixed(0),
-        textAlign: TextAlign.right,
-        style: AppTextStyles.axisValue,
-      ),
-    );
-  }
-
-    Widget _customRightTextWidget(double value, TitleMeta meta) {
+  Widget _customTextWidget(double value, TitleMeta meta) {
     return Padding(
       padding: const EdgeInsets.all(10),
       child: Text(
