@@ -3,7 +3,7 @@ import '../constants/app_constants.dart';
 import '../services/file_service.dart';
 
 class CustomDrawer extends StatefulWidget {
-  final Function(String) onNumberTap;
+  final Function(String, String) onNumberTap; // folder, number
   final VoidCallback onSettingsTap;
 
   const CustomDrawer({
@@ -18,39 +18,56 @@ class CustomDrawer extends StatefulWidget {
 
 class _CustomDrawerState extends State<CustomDrawer> {
   final FileService _fileService = FileService();
-  List<String> _availableFiles = [];
+  List<String> _folders = [];
+  Map<String, List<String>> _filesByFolder = {};
+  Map<String, bool> _expandedFolders = {};
   bool _isLoading = true;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadFiles();
+    _loadFolders();
   }
 
-  Future<void> _loadFiles({bool forceRefresh = false}) async {
+  Future<void> _loadFolders() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final files = await _fileService.getAvailableFiles(forceRefresh: forceRefresh);
+      final folders = await _fileService.getAvailableFolders();
+      
+      // Загружаем файлы для каждой папки
+      final Map<String, List<String>> filesMap = {};
+      for (final folder in folders) {
+        final files = await _fileService.getAvailableFilesForFolder(folder);
+        filesMap[folder] = files;
+        _expandedFolders[folder] = false; // По умолчанию свернуто
+      }
+      
       setState(() {
-        _availableFiles = files;
+        _folders = folders;
+        _filesByFolder = filesMap;
         _isLoading = false;
         
-        // Если список пуст, показываем сообщение
-        if (files.isEmpty) {
-          _errorMessage = 'Файлы не найдены. Проверьте папку assets/data/';
+        if (folders.isEmpty) {
+          _errorMessage = 'Папки не найдены. Проверьте структуру assets/data/';
         }
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Ошибка загрузки файлов: $e';
+        _errorMessage = 'Ошибка загрузки: $e';
         _isLoading = false;
       });
     }
+  }
+
+  void _toggleFolder(String folder) {
+    setState(() {
+      _expandedFolders[folder] = !(_expandedFolders[folder] ?? false);
+    });
   }
 
   @override
@@ -66,13 +83,13 @@ class _CustomDrawerState extends State<CustomDrawer> {
               decoration: const BoxDecoration(
                 color: AppColors.primary,
               ),
-              child:Text(
-                      AppStrings.drawerTitle,
-                      style: AppTextStyles.drawerTitle,
-                    ),
+              child: Text(
+                AppStrings.drawerTitle,
+                style: AppTextStyles.drawerTitle,
+              ),
             ),
           ),
-          _buildFileList(),
+          _buildDrawerContent(),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.settings),
@@ -87,7 +104,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
     );
   }
 
-  Widget _buildFileList() {
+  Widget _buildDrawerContent() {
     if (_isLoading) {
       return const Padding(
         padding: EdgeInsets.all(20),
@@ -96,7 +113,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 10),
-              Text('Сканирование файлов...'),
+              Text('Загрузка...'),
             ],
           ),
         ),
@@ -122,18 +139,77 @@ class _CustomDrawerState extends State<CustomDrawer> {
       );
     }
 
+    if (_folders.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: Center(
+          child: Text('Нет доступных папок'),
+        ),
+      );
+    }
+
     return Column(
-      children: _availableFiles.map((number) {
-        return ListTile(
-          leading: const Icon(Icons.folder, color: AppColors.grey, size: 20),
-          title: Text(
-            'Запись #$number',
-            style: const TextStyle(fontSize: 16),
-          ),
-          onTap: () {
-            Navigator.pop(context);
-            widget.onNumberTap(number);
-          },
+      children: _folders.map((folder) {
+        final files = _filesByFolder[folder] ?? [];
+        final isExpanded = _expandedFolders[folder] ?? false;
+        
+        return Column(
+          children: [
+            // Заголовок папки
+            ListTile(
+              leading: Icon(
+                isExpanded ? Icons.folder_open : Icons.folder,
+                color: AppColors.primary,
+              ),
+              title: Text(
+                folder,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              trailing: Icon(
+                isExpanded 
+                    ? Icons.expand_less 
+                    : Icons.expand_more,
+              ),
+              onTap: () => _toggleFolder(folder),
+            ),
+            // Список файлов (если развернуто)
+            if (isExpanded) ...[
+              if (files.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Text(
+                    'Нет файлов',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                )
+              else
+                ...files.map((number) {
+                  return ListTile(
+                    leading: const Icon(
+                      Icons.insert_drive_file,
+                      color: AppColors.grey,
+                      size: 18,
+                    ),
+                    title: Text(
+                      'Запись #$number',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 30),
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.onNumberTap(folder, number);
+                    },
+                  );
+                }),
+            ],
+            const Divider(height: 1),
+          ],
         );
       }).toList(),
     );

@@ -2,22 +2,24 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_csv/flutter_csv.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/ecg_data.dart';
-import '../constants/app_constants.dart';
+import '../services/file_service.dart';
 
 class ECGService {
-  Future<ECGData> loadECGData(String number) async {
+  final FileService _fileService = FileService();
+
+  Future<ECGData> loadECGData(String folder, String number) async {
     try {
-      final spots = await _loadSpots(number);
-      final peaks = await _loadPeaks(number);
+      final spots = await _loadSpots(folder, number);
+      final peaks = await _loadPeaks(folder, number);
       return ECGData(spots: spots, peaks: peaks);
     } catch (e) {
-      print('Ошибка загрузки данных для записи #$number: $e');
+      print('Ошибка загрузки данных для папки $folder, записи #$number: $e');
       return ECGData(spots: [], peaks: []);
     }
   }
 
-  Future<List<FlSpot>> _loadSpots(String number) async {
-    String path = AppStrings.dataFilePath + number + '_channel1.csv';
+  Future<List<FlSpot>> _loadSpots(String folder, String number) async {
+    String path = _fileService.getDataFilePath(folder, number);
     try {
       final rawData = await rootBundle.loadString(path);
       final doc = FlutterCsv.parseDocument(
@@ -38,9 +40,9 @@ class ECGService {
     }
   }
 
-  Future<List<int>> _loadPeaks(String number) async {
+  Future<List<int>> _loadPeaks(String folder, String number) async {
     try {
-      String path = AppStrings.peaksFilePath + number + 'peaks.csv';
+      String path = _fileService.getPeaksFilePath(folder, number);
       final rawData = await rootBundle.loadString(path);
       final doc = FlutterCsv.parseDocument(
         rawData,
@@ -52,7 +54,7 @@ class ECGService {
           .map((row) => int.parse(row[0].toString()))
           .toList();
     } catch (e) {
-      print('Ошибка загрузки peaks для записи #$number: $e');
+      print('Ошибка загрузки peaks для папки $folder, записи #$number: $e');
       return [];
     }
   }

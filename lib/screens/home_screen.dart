@@ -6,7 +6,6 @@ import '../widgets/ecg_chart.dart';
 import '../widgets/custom_drawer.dart';
 import '../models/ecg_data.dart';
 
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -17,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ECGService _ecgService = ECGService();
   Future<ECGData>? _futureData;
+  String _currentFolder = 'MIT-BIH';
   String _currentNumber = '100';
   
   int _currentStartIndex = 0;
@@ -25,26 +25,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData(_currentNumber);
+    _loadData(_currentFolder, _currentNumber);
   }
 
-  void _loadData(String number) {
+  void _loadData(String folder, String number) {
     setState(() {
+      _currentFolder = folder;
       _currentNumber = number;
       _currentStartIndex = 0;
-      _futureData = _ecgService.loadECGData(number);
+      _futureData = _ecgService.loadECGData(folder, number);
     });
   }
 
   int _calculatePointsPerScreen(double containerWidth, List<FlSpot> spots, double targetSecondsPerScreen) {
     if (spots.isEmpty) return 200;
     
-    // Находим средний шаг по времени между точками
     final double timeStep = spots.length > 1 ? spots[1].x - spots[0].x : 0.01; 
-  
     int pointsByTime = (targetSecondsPerScreen / timeStep).round();
-    
-    // Ограничиваем, чтобы не вылететь за пределы массива
     return pointsByTime > 0 ? pointsByTime : 200;
   }
 
@@ -106,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          'Запись #$_currentNumber',
+          '$_currentFolder - Запись #$_currentNumber',
           style: const TextStyle(
             fontSize: 20,
             color: AppColors.primary,
@@ -233,10 +230,9 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = snapshot.data!;
         return LayoutBuilder(
           builder: (context, constraints) {
-            // Определяем, сколько секунд мы хотим видеть на экране (например, 5 секунд)
             const double targetSecondsPerScreen = 10.0;
             final pointsPerScreen = _calculatePointsPerScreen(constraints.maxWidth, data.spots, targetSecondsPerScreen);
-            // Сохраняем его в стейт для слайдера и пагинации
+            
             if (pointsPerScreen != _pointsPerScreen) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 setState(() {
@@ -249,11 +245,11 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: ECGChart(
-                      data: data,
-                      startIndex: _currentStartIndex,
-                      pointsPerScreen: _pointsPerScreen,
-                    ),
+                    data: data,
+                    startIndex: _currentStartIndex,
+                    pointsPerScreen: _pointsPerScreen,
                   ),
+                ),
                 const SizedBox(height: 10),
                 _buildScrollBar(data.spots.length, _pointsPerScreen),
               ],

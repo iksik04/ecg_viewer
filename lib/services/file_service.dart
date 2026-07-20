@@ -1,66 +1,126 @@
 import 'package:flutter/services.dart' show rootBundle, AssetManifest;
-import 'package:path/path.dart' as path;
 import 'dart:async';
 
 class FileService {
   static List<String>? _cachedFiles;
+  static Map<String, List<String>>? _cachedFilesByFolder;
   
-  // Сканирование директории assets через AssetManifest
-  Future<List<String>> getAvailableFiles({bool forceRefresh = false}) async {
-    if (_cachedFiles != null && !forceRefresh) {
-      return _cachedFiles!;
-    }
-    
+  // Получение списка доступных папок
+  Future<List<String>> getAvailableFolders() async {
     try {
-      final files = await _scanAssets();
-      _cachedFiles = files;
-      return files;
+      final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+      final allAssets = manifest.listAssets();
+      
+      // Извлекаем уникальные имена папок из assets/data/
+      final folders = allAssets
+          .where((asset) => asset.startsWith('assets/data/'))
+          .map((asset) {
+            final parts = asset.split('/');
+            if (parts.length >= 3) {
+              return parts[2]; // NSTDB или MIT-BIH
+            }
+            return '';
+          })
+          .where((folder) => folder.isNotEmpty)
+          .toSet()
+          .toList();
+      
+      folders.sort();
+      return folders;
     } catch (e) {
+      print('Ошибка загрузки папок: $e');
       return [];
     }
   }
   
-  Future<List<String>> _scanAssets() async {
-    // Загружаем манифест (работает в новых версиях Flutter)
-    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+  // Получение файлов для конкретной папки
+  Future<List<String>> getAvailableFilesForFolder(String folder, {bool forceRefresh = false}) async {
+    final cacheKey = 'folder_$folder';
     
-    // Получаем все ресурсы
+    if (_cachedFilesByFolder != null && 
+        _cachedFilesByFolder!.containsKey(cacheKey) && 
+        !forceRefresh) {
+      return _cachedFilesByFolder![cacheKey]!;
+    }
+    
+    try {
+      final files = await _scanAssetsInFolder(folder);
+      
+      if (_cachedFilesByFolder == null) {
+        _cachedFilesByFolder = {};
+      }
+      _cachedFilesByFolder![cacheKey] = files;
+      return files;
+    } catch (e) {
+      print('Ошибка загрузки файлов для папки $folder: $e');
+      return [];
+    }
+  }
+  
+  Future<List<String>> _scanAssetsInFolder(String folder) async {
+    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
     final allAssets = manifest.listAssets();
     
-    // Фильтруем только файлы из assets/data/ с паттерном {number}_channel1.csv
-    final dataFiles = allAssets.where((asset) => 
-      asset.startsWith('assets/data/')
-    ).toList();
+    // Фильтруем файлы из указанной папки
+    final folderPath = 'assets/data/$folder/';
+    final dataFiles = allAssets
+        .where((asset) => 
+            asset.startsWith(folderPath) && 
+            asset.endsWith('_channel1.csv'))
+        .toList();
     
     // Извлекаем номера из имен файлов
     final numbers = dataFiles.map((filePath) {
-      // Пример: 'assets/data/100_channel1.csv' -> '100'
-      final fileName = path.basename(filePath);
+      final fileName = filePath.split('/').last;
+      // Удаляем '_channel1.csv' и получаем идентификатор
       return fileName.replaceFirst('_channel1.csv', '');
     }).toList();
     
-    // Сортируем по числовому значению
-    numbers.sort((a, b) => int.parse(a).compareTo(int.parse(b)));
-
+    // Сортируем с учетом того, что имена могут быть не только числами
+    numbers.sort((a, b) {
+      // Пробуем распарсить как числа
+      final aIsNumber = int.tryParse(a) != null;
+      final bIsNumber = int.tryParse(b) != null;
+      
+      if (aIsNumber && bIsNumber) {
+        // Оба числа - сортируем по числовому значению
+        return int.parse(a).compareTo(int.parse(b));
+      } else if (aIsNumber) {
+        // Числа идут перед строками
+        return -1;
+      } else if (bIsNumber) {
+        return 1;
+      } else {
+        // Оба не числа - сортируем как строки
+        return a.compareTo(b);
+      }
+    });
+    
     return numbers;
   }
   
-  Future<void> refreshCache() async {
-    _cachedFiles = null;
-    await getAvailableFiles(forceRefresh: true);
+  // Получение полного пути к файлу данных
+  String getDataFilePath(String folder, String number) {
+    return 'assets/data/$folder/${number}_channel1.csv';
   }
   
-  // Проверка существования peaks файла через AssetManifest
-  Future<bool> hasPeaksFile(String number) async {
+  // Получение полного пути к файлу пиков
+  String getPeaksFilePath(String folder, String number) {
+    // Для peaks файлов используется формат: assets/peaks/{number}peaks.csv
+    // Без папки в имени файла
+    return 'assets/peaks/${number}peaks.csv';
+  }
+  
+  // Проверка существования peaks файла
+  Future<bool> hasPeaksFile(String folder, String number) async {
     try {
       final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
       final allAssets = manifest.listAssets();
-      final peaksPath = 'assets/peaks/${number}peaks.csv';
+      final peaksPath = getPeaksFilePath(folder, number);
       return allAssets.contains(peaksPath);
     } catch (e) {
-      // Если манифест не загрузился, пробуем старый способ (для обратной совместимости)
       try {
-        await rootBundle.loadString('assets/peaks/${number}peaks.csv');
+        await rootBundle.loadString(getPeaksFilePath(folder, number));
         return true;
       } catch (_) {
         return false;
@@ -68,8 +128,8 @@ class FileService {
     }
   }
   
-  Future<Map<String, dynamic>> getFileInfo(String number) async {
-    final String filePath = 'assets/data/${number}_channel1.csv';
+  Future<Map<String, dynamic>> getFileInfo(String folder, String number) async {
+    final String filePath = getDataFilePath(folder, number);
     try {
       final String content = await rootBundle.loadString(filePath);
       final lines = content.split('\n');
@@ -77,7 +137,7 @@ class FileService {
         'exists': true,
         'size': content.length,
         'lines': lines.length,
-        'hasPeaks': await hasPeaksFile(number),
+        'hasPeaks': await hasPeaksFile(folder, number),
       };
     } catch (e) {
       return {
@@ -85,5 +145,11 @@ class FileService {
         'error': e.toString(),
       };
     }
+  }
+  
+  // Очистка кэша
+  void clearCache() {
+    _cachedFiles = null;
+    _cachedFilesByFolder = null;
   }
 }
