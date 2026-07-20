@@ -106,15 +106,15 @@ def convert_first_channel_to_csv(dat_file_path, output_dir):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Конвертация .dat+.hea файлов в CSV (только время и первый канал)'
+        description='Конвертация всех .dat+.hea файлов из директории в CSV (только время и первый канал)'
     )
     parser.add_argument(
         'output_dir', 
-        help='Директория для сохранения CSV файла'
+        help='Директория для сохранения CSV файлов'
     )
     parser.add_argument(
-        'dat_file', 
-        help='Путь к .dat файлу (или к файлу без расширения)'
+        'source_dir', 
+        help='Директория с .dat файлами'
     )
     
     args = parser.parse_args()
@@ -124,17 +124,45 @@ def main():
         print("Ошибка: Не указана директория сохранения")
         sys.exit(1)
     
-    if not args.dat_file:
-        print("Ошибка: Не указан путь к .dat файлу")
+    if not args.source_dir:
+        print("Ошибка: Не указана директория источник")
         sys.exit(1)
     
-    # Конвертируем
-    result = convert_first_channel_to_csv(args.dat_file, args.output_dir)
+    # Проверяем существование директории источника
+    source_path = Path(args.source_dir)
+    if not source_path.exists():
+        print(f"Ошибка: Директория {args.source_dir} не существует")
+        sys.exit(1)
     
-    if result is None:
+    if not source_path.is_dir():
+        print(f"Ошибка: {args.source_dir} не является директорией")
+        sys.exit(1)
+    
+    # Находим все .dat файлы в директории источника
+    dat_files = list(source_path.glob("*.dat"))
+    
+    if not dat_files:
+        print(f"Предупреждение: В директории {args.source_dir} не найдено .dat файлов")
+        sys.exit(0)
+    
+    print(f"Найдено {len(dat_files)} .dat файлов")
+    print("-" * 50)
+    
+    # Конвертируем каждый файл
+    success_count = 0
+    for dat_file in dat_files:
+        print(f"\nОбработка: {dat_file.name}")
+        result = convert_first_channel_to_csv(str(dat_file), args.output_dir)
+        if result is not None:
+            success_count += 1
+        print("-" * 50)
+    
+    print(f"\nКонвертация завершена!")
+    print(f"Успешно обработано: {success_count} из {len(dat_files)} файлов")
+    
+    if success_count == 0:
         sys.exit(1)
     else:
-        print("\nКонвертация завершена успешно!")
         sys.exit(0)
 
 if __name__ == "__main__":
