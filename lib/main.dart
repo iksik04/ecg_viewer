@@ -91,9 +91,46 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(239, 239, 239, 1),
       appBar: AppBar(
-        title: const Text('ECG Viewer', style: TextStyle(color: Colors.white)),
+        title: const Text('Визуализация работы QRS-детектора', style: TextStyle(color: Colors.white, fontSize: 20)),
         backgroundColor: const Color.fromRGBO(52, 179, 171, 1),
+        iconTheme: IconThemeData(
+          color: Colors.white,
+          size: 24.0,
+        ),
       ),
+        drawer: Drawer(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              SizedBox(
+                height: 65,
+                child: DrawerHeader(
+                  decoration: BoxDecoration(color: Color.fromRGBO(52, 179, 171, 1),),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Доступные записи:', style: TextStyle(color: Colors.white, fontSize: 20)))
+                )
+              ),
+              ListTile(
+                leading: Icon(Icons.home),
+                title: Text('Главная'),
+                onTap: () {
+                  Navigator.pop(context); // Закрыть меню
+                  // Переход на экран
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.settings),
+                title: Text('Настройки'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Переход на экран настроек
+                },
+              ),
+            ],
+          ),
+        ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(50),
@@ -182,7 +219,7 @@ class GraphiksWidget extends StatelessWidget {
           ),
           bottomTitles: AxisTitles(
             axisNameWidget: const Text(
-              'Time, sec',
+              'Время, сек',
               style: TextStyle(
                 color: Colors.black,
                 fontSize: 20,
@@ -193,12 +230,12 @@ class GraphiksWidget extends StatelessWidget {
               showTitles: true,
               interval: 0.5,
               reservedSize: 40,
-              getTitlesWidget: (value, meta) => customText(value, meta),
+              getTitlesWidget: (value, meta) => customTextWidget(value, meta),
             ),
           ),
           leftTitles: AxisTitles(
             axisNameWidget: const Text(
-              'Voltage, mV',
+              'Напряжение, мВ',
               style: TextStyle(
                 color: Colors.black,
                 fontSize: 20,
@@ -209,7 +246,7 @@ class GraphiksWidget extends StatelessWidget {
               showTitles: true,
               interval: 0.5,
               reservedSize: 60,
-              getTitlesWidget: (value, meta) => customText(value, meta),
+              getTitlesWidget: (value, meta) => customTextWidget(value, meta),
             ),
           ),
         ),
@@ -263,7 +300,7 @@ class GraphiksWidget extends StatelessWidget {
     return lines;
   }
 
-  Widget customText(double value, TitleMeta meta) {
+  Widget customTextWidget(double value, TitleMeta meta) {
     return Padding(
       padding: const EdgeInsets.all(10),
       child: Text(
