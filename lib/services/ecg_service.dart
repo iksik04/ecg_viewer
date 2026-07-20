@@ -17,7 +17,7 @@ class ECGService {
   }
 
   Future<List<FlSpot>> _loadSpots(String number) async {
-    String path = AppStrings.dataFilePath + number + '_channel1.csv';
+    String path = '${AppStrings.dataFilePath}${number}_channel1.csv';
     try {
       final rawData = await rootBundle.loadString(path);
       final doc = FlutterCsv.parseDocument(
@@ -40,7 +40,7 @@ class ECGService {
 
   Future<List<int>> _loadPeaks(String number) async {
     try {
-      String path = AppStrings.peaksFilePath + number + 'peaks.csv';
+      String path = '${AppStrings.peaksFilePath}${number}peaks.csv';
       final rawData = await rootBundle.loadString(path);
       final doc = FlutterCsv.parseDocument(
         rawData,
