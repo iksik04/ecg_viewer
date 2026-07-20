@@ -15,12 +15,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ECGService _ecgService = ECGService();
   Future<ECGData>? _futureData;
+  int _currentNumber = 100;
 
   @override
   void initState() {
     super.initState();
-    int number = 100;
-    _futureData = _ecgService.loadECGData(number);
+    _loadData(_currentNumber);
+  }
+
+  void _loadData(int number) {
+    setState(() {
+      _currentNumber = number;
+      _futureData = _ecgService.loadECGData(number);
+    });
   }
 
   @override
@@ -29,13 +36,32 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.background,
       appBar: _buildAppBar(),
       drawer: CustomDrawer(
-        onHomeTap: () {},
-        onSettingsTap: () {},
+        onNumberTap: _loadData,
+        onSettingsTap: () {
+          // TODO: Реализовать настройки
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Настройки в разработке')),
+          );
+        },
       ),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(50),
-          child: _buildECGContent(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Text(
+                'Запись #$_currentNumber',
+                style: const TextStyle(
+                  fontSize: 20,
+                  color: AppColors.primary
+                ),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: _buildECGContent(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -60,20 +86,34 @@ class _HomeScreenState extends State<HomeScreen> {
       future: _futureData,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 20),
+                Text('Загрузка данных...'),
+              ],
+            ),
+          );
         }
 
         if (snapshot.hasError) {
-          return Text(
-            '${AppStrings.errorLoading} ${snapshot.error}',
-            style: AppTextStyles.errorMessage,
+          return Center(
+            child: Text(
+              '${AppStrings.errorLoading} ${snapshot.error}',
+              style: AppTextStyles.errorMessage,
+              textAlign: TextAlign.center,
+            ),
           );
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Text(
-            AppStrings.noData,
-            style: AppTextStyles.infoMessage,
+          return Center(
+            child: Text(
+              AppStrings.noData,
+              style: AppTextStyles.infoMessage,
+            ),
           );
         }
 
