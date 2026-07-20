@@ -83,7 +83,7 @@ class AppStrings {
   static const String noData = 'Нет данных ECG';
   static const String errorLoading = 'Ошибка загрузки данных:';
   
-  // Имена файлов
-  static const String dataFilePath = 'assets/100.csv';
-  static const String peaksFilePath = 'assets/100peaks.csv';
+  // Пути к файлам 
+  static const String dataFilePath = 'assets/data/';
+  static const String peaksFilePath = 'assets/peaks/';
 }

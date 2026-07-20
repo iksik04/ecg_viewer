@@ -38,12 +38,12 @@ class ECGChart extends StatelessWidget {
   FlTitlesData _buildTitlesData() {
     return FlTitlesData(
       show: true,
-      topTitles: const AxisTitles(
-        sideTitles: SideTitles(showTitles: true, reservedSize: 40),
-      ),
-      rightTitles: const AxisTitles(
-        sideTitles: SideTitles(showTitles: false),
-      ),
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: true, reservedSize: 5),
+        ),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
       bottomTitles: AxisTitles(
         axisNameWidget: Text(
           AppStrings.axisTime,

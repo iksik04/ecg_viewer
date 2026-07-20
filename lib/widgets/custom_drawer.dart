@@ -34,8 +34,7 @@ class CustomDrawer extends StatelessWidget {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text(AppStrings.menuHome),
+            title: const Text('100'),
             onTap: () {
               Navigator.pop(context);
               onHomeTap();

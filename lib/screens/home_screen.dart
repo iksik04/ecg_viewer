@@ -19,7 +19,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _futureData = _ecgService.loadECGData();
+    int number = 100;
+    _futureData = _ecgService.loadECGData(number);
   }
 
   @override

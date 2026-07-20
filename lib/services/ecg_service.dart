@@ -5,18 +5,19 @@ import '../models/ecg_data.dart';
 import '../constants/app_constants.dart';
 
 class ECGService {
-  Future<ECGData> loadECGData() async {
+  Future<ECGData> loadECGData(int number) async {
     try {
-      final spots = await _loadSpots();
-      final peaks = await _loadPeaks();
+      final spots = await _loadSpots(number);
+      final peaks = await _loadPeaks(number);
       return ECGData(spots: spots, peaks: peaks);
     } catch (e) {
       return ECGData(spots: [], peaks: []);
     }
   }
 
-  Future<List<FlSpot>> _loadSpots() async {
-    final rawData = await rootBundle.loadString(AppStrings.dataFilePath);
+  Future<List<FlSpot>> _loadSpots(int number) async {
+    String path = AppStrings.dataFilePath + number.toString() + '.csv';
+    final rawData = await rootBundle.loadString(path);
     final doc = FlutterCsv.parseDocument(
       rawData,
       firstRowIsHeader: true,
@@ -31,9 +32,10 @@ class ECGService {
         .toList();
   }
 
-  Future<List<int>> _loadPeaks() async {
+  Future<List<int>> _loadPeaks(int number) async {
     try {
-      final rawData = await rootBundle.loadString(AppStrings.peaksFilePath);
+      String path = AppStrings.peaksFilePath + number.toString() + 'peaks.csv';
+      final rawData = await rootBundle.loadString(path);
       final doc = FlutterCsv.parseDocument(
         rawData,
         firstRowIsHeader: true,
