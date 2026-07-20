@@ -6,6 +6,7 @@ import '../widgets/ecg_chart.dart';
 import '../widgets/custom_drawer.dart';
 import '../models/ecg_data.dart';
 
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -16,7 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ECGService _ecgService = ECGService();
   Future<ECGData>? _futureData;
-  int _currentNumber = 100;
+  String _currentNumber = '100';
   
   int _currentStartIndex = 0;
   int _pointsPerScreen = 200;
@@ -27,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData(_currentNumber);
   }
 
-  void _loadData(int number) {
+  void _loadData(String number) {
     setState(() {
       _currentNumber = number;
       _currentStartIndex = 0;
@@ -293,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   });
                 },
                 activeColor: AppColors.primary,
-                inactiveColor: AppColors.grey.withOpacity(0.3),
+                inactiveColor: AppColors.grey,
               ),
             ),
           ),
