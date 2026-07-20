@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../services/ecg_service.dart';
 import '../widgets/ecg_chart.dart';
 import '../widgets/custom_drawer.dart';
@@ -24,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(239, 239, 239, 1),
+      backgroundColor: AppColors.background,
       appBar: _buildAppBar(),
       drawer: CustomDrawer(
         onHomeTap: () {},
@@ -41,13 +42,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   AppBar _buildAppBar() {
     return AppBar(
-      title: const Text(
-        'Визуализация работы QRS-детектора',
-        style: TextStyle(color: Colors.white, fontSize: 20),
+      title: Text(
+        AppStrings.appTitle,
+        style: AppTextStyles.appBarTitle,
       ),
-      backgroundColor: const Color.fromRGBO(52, 179, 171, 1),
+      backgroundColor: AppColors.primary,
       iconTheme: const IconThemeData(
-        color: Colors.white,
+        color: AppColors.white,
         size: 24.0,
       ),
     );
@@ -62,11 +63,17 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         if (snapshot.hasError) {
-          return Text('Ошибка загрузки данных: ${snapshot.error}');
+          return Text(
+            '${AppStrings.errorLoading} ${snapshot.error}',
+            style: AppTextStyles.errorMessage,
+          );
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Text('Нет данных ECG');
+          return Text(
+            AppStrings.noData,
+            style: AppTextStyles.infoMessage,
+          );
         }
 
         return InteractiveViewer(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 
 class CustomDrawer extends StatelessWidget {
   final VoidCallback onHomeTap;
@@ -21,20 +22,20 @@ class CustomDrawer extends StatelessWidget {
             height: 65,
             child: DrawerHeader(
               decoration: const BoxDecoration(
-                color: Color.fromRGBO(52, 179, 171, 1),
+                color: AppColors.primary,
               ),
-              child: const Align(
+              child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Доступные записи:',
-                  style: TextStyle(color: Colors.white, fontSize: 20),
+                  AppStrings.drawerTitle,
+                  style: AppTextStyles.drawerTitle,
                 ),
               ),
             ),
           ),
           ListTile(
             leading: const Icon(Icons.home),
-            title: const Text('Главная'),
+            title: const Text(AppStrings.menuHome),
             onTap: () {
               Navigator.pop(context);
               onHomeTap();
@@ -42,7 +43,7 @@ class CustomDrawer extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.settings),
-            title: const Text('Настройки'),
+            title: const Text(AppStrings.menuSettings),
             onTap: () {
               Navigator.pop(context);
               onSettingsTap();
