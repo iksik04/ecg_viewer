@@ -108,7 +108,7 @@ class FileService {
   String getPeaksFilePath(String folder, String number) {
     // Для peaks файлов используется формат: assets/peaks/{number}peaks.csv
     // Без папки в имени файла
-    return 'assets/peaks/${number}peaks.csv';
+    return 'assets/true_peaks/$folder/${number}_peaks.csv';
   }
   
   // Проверка существования peaks файла

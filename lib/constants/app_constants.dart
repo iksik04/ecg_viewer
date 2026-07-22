@@ -85,5 +85,5 @@ class AppStrings {
   
   // Пути к файлам 
   static const String dataFilePath = 'assets/data/';
-  static const String peaksFilePath = 'assets/peaks/';
+  static const String peaksFilePath = 'assets/true_peaks/';
 }

@@ -72,7 +72,12 @@ flutter:
      - assets/data/MITDB/
      - assets/data/NSTDB/
      - assets/data/VFDB/
-     - assets/peaks/
+     - assets/true_peaks/AHADB/
+     - assets/true_peaks/CUDB/
+     - assets/true_peaks/EDB/
+     - assets/true_peaks/MITDB/
+     - assets/true_peaks/NSTDB/
+     - assets/true_peaks/VFDB/
     # - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
