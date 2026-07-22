@@ -66,8 +66,12 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-     - assets/data/MIT-BIH/
+     - assets/data/AHADB/
+     - assets/data/CUDB/
+     - assets/data/EDB/
+     - assets/data/MITDB/
      - assets/data/NSTDB/
+     - assets/data/VFDB/
      - assets/peaks/
     # - images/a_dot_ham.jpeg
 

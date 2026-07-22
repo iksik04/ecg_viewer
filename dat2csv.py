@@ -6,42 +6,125 @@ import sys
 import argparse
 from pathlib import Path
 
-def convert_first_channel_to_csv(dat_file_path, output_dir):
+# Возможные расширения файлов данных WFDB
+WFDB_DATA_EXTENSIONS = ['.dat', '.mwd', '.mld', '.ecg', '.sig', '.bin']
+
+def find_wfdb_files_recursive(source_dir, extensions=None):
     """
-    Конвертирует .dat+.hea файлы в CSV, сохраняя только время и первый канал.
+    Рекурсивно находит все файлы данных WFDB в директории и поддиректориях.
     
     Параметры:
     ----------
-    dat_file_path : str
-        Путь к .dat файлу (или к файлу без расширения)
+    source_dir : str
+        Базовая директория для поиска
+    extensions : list
+        Список расширений для поиска (по умолчанию все известные)
+    
+    Возвращает:
+    --------
+    list: Список путей к файлам данных
+    """
+    if extensions is None:
+        extensions = WFDB_DATA_EXTENSIONS
+    
+    source_path = Path(source_dir)
+    data_files = []
+    found_records = set()  # Для отслеживания уникальных записей
+    
+    # Рекурсивный обход всех директорий
+    for root, dirs, files in os.walk(source_path):
+        for file in files:
+            file_path = Path(root) / file
+            # Проверяем, является ли файл файлом данных
+            if file_path.suffix.lower() in extensions:
+                # Проверяем наличие соответствующего .hea файла
+                hea_file = file_path.with_suffix('.hea')
+                if hea_file.exists():
+                    # Используем базовое имя без расширения как идентификатор записи
+                    record_name = file_path.stem
+                    # Добавляем только если запись еще не добавлена
+                    if record_name not in found_records:
+                        found_records.add(record_name)
+                        data_files.append(file_path)
+    
+    return data_files
+
+def detect_data_file(record_path):
+    """
+    Определяет, какое расширение данных использовать для записи.
+    
+    Параметры:
+    ----------
+    record_path : Path
+        Путь к файлу записи без расширения
+    
+    Возвращает:
+    --------
+    Path: Путь к файлу данных с правильным расширением
+    """
+    # Проверяем все возможные расширения
+    for ext in WFDB_DATA_EXTENSIONS:
+        test_file = record_path.with_suffix(ext)
+        if test_file.exists():
+            return test_file
+    return None
+
+def convert_first_channel_to_csv(record_file_path, output_dir, source_dir, verbose=False):
+    """
+    Конвертирует файлы WFDB (в любом формате) в CSV, сохраняя только время и первый канал.
+    
+    Параметры:
+    ----------
+    record_file_path : str или Path
+        Путь к файлу данных (с любым расширением)
     output_dir : str
-        Директория для сохранения CSV файла
+        Базовая директория для сохранения CSV файлов
+    source_dir : str
+        Базовая директория источника (для сохранения структуры)
+    verbose : bool
+        Подробный вывод
     """
     
-    # Преобразуем путь к файлу
-    dat_path = Path(dat_file_path)
+    # Преобразуем пути
+    file_path = Path(record_file_path)
+    source_path = Path(source_dir)
+    output_base = Path(output_dir)
     
-    # Если указан .dat файл, убираем расширение
-    if dat_path.suffix == '.dat':
-        record_path = dat_path.with_suffix('')
-    else:
-        record_path = dat_path
+    # Получаем базовое имя записи (без расширения)
+    record_name = file_path.stem
+    record_dir = file_path.parent
+    record_path = record_dir / record_name
     
-    # Проверяем существование файлов
-    if not record_path.with_suffix('.dat').exists():
-        print(f"Ошибка: Файл {record_path}.dat не найден")
+    # Проверяем существование .hea файла
+    hea_file = record_path.with_suffix('.hea')
+    if not hea_file.exists():
+        if verbose:
+            print(f"  Предупреждение: Файл {hea_file} не найден")
         return None
     
-    if not record_path.with_suffix('.hea').exists():
-        print(f"Ошибка: Файл {record_path}.hea не найден")
+    # Определяем, какой файл данных использовать
+    data_file = detect_data_file(record_path)
+    if not data_file:
+        if verbose:
+            print(f"  Предупреждение: Не найден файл данных для записи {record_name}")
         return None
     
     try:
-        # Создаем выходную директорию
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
+        # Определяем относительный путь от source_dir
+        try:
+            rel_path = record_dir.relative_to(source_path)
+        except ValueError:
+            rel_path = Path('.')
         
-        print(f"Чтение записи: {record_path.name}")
+        # Создаем выходную директорию с сохранением структуры
+        output_subdir = output_base / rel_path
+        output_subdir.mkdir(parents=True, exist_ok=True)
+        
+        if verbose:
+            print(f"  Исходная папка: {record_dir}")
+            print(f"  Выходная папка: {output_subdir}")
+            print(f"  Файл данных: {data_file.name}")
+            print(f"  Файл заголовка: {hea_file.name}")
         
         # Чтение сигналов
         record = wfdb.rdrecord(str(record_path), physical=True)
@@ -52,23 +135,23 @@ def convert_first_channel_to_csv(dat_file_path, output_dir):
         elif hasattr(record, 'd_signal'):
             signals = record.d_signal
         else:
-            print("Ошибка: Не удалось получить сигналы из записи")
+            if verbose:
+                print("  Ошибка: Не удалось получить сигналы из записи")
             return None
         
         # Проверяем, есть ли хотя бы один канал
         if signals.shape[1] < 1:
-            print("Ошибка: Запись не содержит сигналов")
+            if verbose:
+                print("  Ошибка: Запись не содержит сигналов")
             return None
         
-        print(f"Количество сигналов: {signals.shape[1]}")
-        print(f"Длина сигналов: {signals.shape[0]}")
-        print(f"Частота дискретизации: {record.fs} Гц")
+        if verbose:
+            print(f"  Количество каналов: {signals.shape[1]}")
+            print(f"  Длина сигналов: {signals.shape[0]} отсчетов")
+            print(f"  Частота дискретизации: {record.fs} Гц")
         
         # Создаем DataFrame только с временем и первым каналом
-        # Время в секундах
         time_seconds = np.arange(signals.shape[0]) / record.fs
-        
-        # Первый канал (индекс 0)
         first_channel = signals[:, 0]
         
         # Получаем имя первого канала
@@ -84,48 +167,88 @@ def convert_first_channel_to_csv(dat_file_path, output_dir):
         })
         
         # Сохраняем в CSV
-        output_file = output_path / f"{record_path.name}_channel1.csv"
+        output_file = output_subdir / f"{record_name}_channel1.csv"
         df.to_csv(output_file, index=False, float_format='%.6f')
         
-        print(f"\nФайл успешно сохранен: {output_file}")
-        print(f"Размер данных: {df.shape[0]} строк, {df.shape[1]} столбцов")
-        print(f"Диапазон времени: {df['time_seconds'].min():.3f} - {df['time_seconds'].max():.3f} сек")
-        print(f"Диапазон сигнала: {df[channel_name].min():.3f} - {df[channel_name].max():.3f}")
-        
-        # Показываем первые 5 строк
-        print("\nПервые 5 строк данных:")
-        print(df.head())
+        if verbose:
+            print(f"  Файл сохранен: {output_file}")
+            print(f"  Размер: {df.shape[0]} строк, {df.shape[1]} столбцов")
+            print(f"  Диапазон времени: {df['time_seconds'].min():.3f} - {df['time_seconds'].max():.3f} сек")
+            print(f"  Диапазон сигнала: {df[channel_name].min():.3f} - {df[channel_name].max():.3f}")
         
         return df
         
     except Exception as e:
-        print(f"Ошибка при обработке файла: {e}")
-        import traceback
-        traceback.print_exc()
+        if verbose:
+            print(f"  Ошибка при обработке файла: {e}")
+            import traceback
+            traceback.print_exc()
         return None
+
+def print_directory_tree(base_path, prefix="", max_depth=2, current_depth=0):
+    """Выводит структуру директорий для отладки"""
+    if current_depth > max_depth:
+        return
+    
+    base_path = Path(base_path)
+    if not base_path.exists():
+        print(f"  Директория не существует: {base_path}")
+        return
+    
+    items = sorted(base_path.iterdir())
+    # Показываем только первые 20 элементов для краткости
+    display_items = items[:20]
+    if len(items) > 20:
+        display_items.append(None)  # Маркер "и еще..."
+    
+    for i, item in enumerate(display_items):
+        if item is None:
+            print(f"  {prefix}└── ... и еще {len(items) - 20} элементов")
+            continue
+            
+        is_last = (i == len(display_items) - 1 or display_items[i+1] is None)
+        if item.is_dir():
+            print(f"  {prefix}{'└── ' if is_last else '├── '}{item.name}/")
+            if current_depth < max_depth:
+                print_directory_tree(item, prefix + ("    " if is_last else "│   "), max_depth, current_depth + 1)
+        else:
+            # Показываем только файлы с определенными расширениями
+            if item.suffix.lower() in WFDB_DATA_EXTENSIONS + ['.hea', '.atr', '.xyz']:
+                print(f"  {prefix}{'└── ' if is_last else '├── '}{item.name}")
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Конвертация всех .dat+.hea файлов из директории в CSV (только время и первый канал)'
+        description='Конвертация всех файлов WFDB (любого формата) из директории и поддиректорий в CSV (только время и первый канал)'
+    )
+    parser.add_argument(
+        'source_dir', 
+        help='Директория с файлами WFDB (рекурсивный обход)'
     )
     parser.add_argument(
         'output_dir', 
         help='Директория для сохранения CSV файлов'
     )
     parser.add_argument(
-        'source_dir', 
-        help='Директория с .dat файлами'
+        '--extensions', '-e',
+        nargs='+',
+        default=WFDB_DATA_EXTENSIONS,
+        help=f'Расширения файлов данных для поиска (по умолчанию: {", ".join(WFDB_DATA_EXTENSIONS)})'
+    )
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='Подробный вывод'
     )
     
     args = parser.parse_args()
     
     # Проверяем аргументы
-    if not args.output_dir:
-        print("Ошибка: Не указана директория сохранения")
-        sys.exit(1)
-    
     if not args.source_dir:
         print("Ошибка: Не указана директория источник")
+        sys.exit(1)
+    
+    if not args.output_dir:
+        print("Ошибка: Не указана директория сохранения")
         sys.exit(1)
     
     # Проверяем существование директории источника
@@ -138,27 +261,56 @@ def main():
         print(f"Ошибка: {args.source_dir} не является директорией")
         sys.exit(1)
     
-    # Находим все .dat файлы в директории источника
-    dat_files = list(source_path.glob("*.dat"))
+    # Показываем структуру источника
+    print(f"\nСтруктура исходной директории (первые {2} уровня):")
+    print_directory_tree(source_path, max_depth=2)
+    print("\n" + "=" * 60)
     
-    if not dat_files:
-        print(f"Предупреждение: В директории {args.source_dir} не найдено .dat файлов")
+    # Рекурсивно находим все файлы данных WFDB
+    print(f"\nПоиск файлов WFDB в: {args.source_dir}")
+    print(f"   Расширения: {', '.join(args.extensions)}")
+    
+    data_files = find_wfdb_files_recursive(args.source_dir, args.extensions)
+    
+    if not data_files:
+        print(f"Предупреждение: В директории {args.source_dir} и поддиректориях не найдено файлов данных WFDB")
+        print("   Проверьте, что файлы имеют одно из расширений:", ', '.join(args.extensions))
         sys.exit(0)
     
-    print(f"Найдено {len(dat_files)} .dat файлов")
-    print("-" * 50)
+    print(f"Найдено {len(data_files)} файлов данных WFDB")
+    print("=" * 60)
     
     # Конвертируем каждый файл
     success_count = 0
-    for dat_file in dat_files:
-        print(f"\nОбработка: {dat_file.name}")
-        result = convert_first_channel_to_csv(str(dat_file), args.output_dir)
+    error_files = []
+    
+    for i, data_file in enumerate(data_files, 1):
+        print(f"\n[{i}/{len(data_files)}] Обработка: {data_file}")
+        print("-" * 40)
+        result = convert_first_channel_to_csv(str(data_file), args.output_dir, args.source_dir, args.verbose)
         if result is not None:
             success_count += 1
-        print("-" * 50)
+        else:
+            error_files.append(data_file)
+        print("-" * 40)
     
-    print(f"\nКонвертация завершена!")
-    print(f"Успешно обработано: {success_count} из {len(dat_files)} файлов")
+    # Итоговый отчет
+    print(f"\n" + "=" * 60)
+    print(f"ОТЧЕТ О КОНВЕРТАЦИИ")
+    print(f"Успешно обработано: {success_count} из {len(data_files)} файлов")
+    
+    if error_files:
+        print(f"Ошибки при обработке {len(error_files)} файлов:")
+        for err_file in error_files[:10]:  # Показываем первые 10 ошибок
+            print(f"  - {err_file}")
+        if len(error_files) > 10:
+            print(f"  ... и еще {len(error_files) - 10} файлов")
+    
+    # Показываем структуру выходной директории
+    output_path = Path(args.output_dir)
+    if output_path.exists():
+        print(f"\nСтруктура выходной директории:")
+        print_directory_tree(output_path, max_depth=2)
     
     if success_count == 0:
         sys.exit(1)

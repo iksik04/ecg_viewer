@@ -17,7 +17,7 @@ class FileService {
           .map((asset) {
             final parts = asset.split('/');
             if (parts.length >= 3) {
-              return parts[2]; // NSTDB или MIT-BIH
+              return parts[2];
             }
             return '';
           })

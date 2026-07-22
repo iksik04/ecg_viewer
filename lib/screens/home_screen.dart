@@ -17,7 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ECGService _ecgService = ECGService();
   Future<ECGData>? _futureData;
-  String _currentFolder = 'MIT-BIH';
+  String _currentFolder = 'MITDB';
   String _currentNumber = '100';
   
   int _currentStartIndex = 0;
