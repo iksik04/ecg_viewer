@@ -23,7 +23,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentStartIndex = 0;
   int _pointsPerScreen = 200;
   double _targetSecondsPerScreen = 10.0;
-  bool _showTruePeaks = true;
+  bool _showTruePeaks = false;
+  bool _showPredPeaks = true;
 
   @override
   void initState() {
@@ -103,9 +104,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _toggleShowPeaks() {
+  void _toggleShowTruePeaks() {
     setState(() {
       _showTruePeaks = !_showTruePeaks;
+    });
+  }
+
+  void _toggleShowPredPeaks() {
+    setState(() {
+      _showPredPeaks = !_showPredPeaks;
     });
   }
 
@@ -167,7 +174,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         Row(
           children: [
-            _buildTogglePeaksButton(),
+            _buildTogglePredPeaksButton(),
+            const SizedBox(width: 10),
+            _buildToggleTruePeaksButton(),
             const SizedBox(width: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -185,18 +194,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-    Widget _buildTogglePeaksButton() {
+  Widget _buildToggleTruePeaksButton() {
     return GestureDetector(
-      onTap: _toggleShowPeaks,
+      onTap: _toggleShowTruePeaks,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: _showTruePeaks 
-              ? AppColors.primary.withValues(alpha: 0.2)
+              ? AppColors.truePeakLine.withValues(alpha: 0.2)
               : Colors.grey.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _showTruePeaks ? AppColors.primary : Colors.grey,
+            color: _showTruePeaks ? AppColors.truePeakLine : Colors.grey,
             width: 1.5,
           ),
         ),
@@ -205,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Icon(
               _showTruePeaks ? Icons.visibility : Icons.visibility_off,
-              color: _showTruePeaks ? AppColors.primary : Colors.grey,
+              color: _showTruePeaks ? AppColors.truePeakLine : Colors.grey,
               size: 18,
             ),
             const SizedBox(width: 6),
@@ -213,8 +222,46 @@ class _HomeScreenState extends State<HomeScreen> {
               'Истинные пики',
               style: TextStyle(
                 fontSize: 14,
-                color: _showTruePeaks ? AppColors.primary : Colors.grey,
+                color: _showTruePeaks ? AppColors.truePeakLine : Colors.grey,
                 fontWeight: _showTruePeaks ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTogglePredPeaksButton() {
+    return GestureDetector(
+      onTap: _toggleShowPredPeaks,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: _showPredPeaks 
+              ? AppColors.predPeakLine.withValues(alpha: 0.2)
+              : Colors.grey.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _showPredPeaks ? AppColors.predPeakLine : Colors.grey,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _showPredPeaks ? Icons.visibility : Icons.visibility_off,
+              color: _showPredPeaks ? AppColors.predPeakLine : Colors.grey,
+              size: 18,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Предсказанные пики',
+              style: TextStyle(
+                fontSize: 14,
+                color: _showPredPeaks ? AppColors.predPeakLine : Colors.grey,
+                fontWeight: _showPredPeaks ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
           ],
@@ -353,12 +400,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                     },
                     child: ECGChart(
-                      key: ValueKey('ecg_chart_${_showTruePeaks}_$_currentStartIndex'),
+                      key: ValueKey('ecg_chart_${_showTruePeaks}_${_showPredPeaks}_$_currentStartIndex'),
                       data: data,
                       startIndex: _currentStartIndex,
                       pointsPerScreen: _pointsPerScreen,
                       targetSecondsPerScreen: _targetSecondsPerScreen,
                       showTruePeaks: _showTruePeaks,
+                      showPredPeaks: _showPredPeaks,
                     ),
                   ),
                 ),

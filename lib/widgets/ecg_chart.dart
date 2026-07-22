@@ -8,7 +8,8 @@ class ECGChart extends StatefulWidget {
   final int startIndex;
   final int pointsPerScreen;
   final double targetSecondsPerScreen;
-  final bool showTruePeaks; // Добавлено
+  final bool showTruePeaks;
+  final bool showPredPeaks;
 
   const ECGChart({
     super.key,
@@ -16,7 +17,8 @@ class ECGChart extends StatefulWidget {
     required this.startIndex,
     required this.pointsPerScreen,
     required this.targetSecondsPerScreen,
-    this.showTruePeaks = true, // По умолчанию показываем пики
+    this.showTruePeaks = false,
+    this.showPredPeaks = true,
   });
 
   @override
@@ -35,7 +37,17 @@ class _ECGChartState extends State<ECGChart> {
       );
     }
 
-    final truePeaks = _getTruePeaks();
+    final truePeaksLines = _getTruePeaks();
+    final predPeaksLines = _getPredPeaks();
+
+    // Объединяем все вертикальные линии
+    final allVerticalLines = <VerticalLine>[];
+    if (widget.showTruePeaks) {
+      allVerticalLines.addAll(truePeaksLines);
+    }
+    if (widget.showPredPeaks) {
+      allVerticalLines.addAll(predPeaksLines);
+    }
 
     return LineChart(
       LineChartData(
@@ -53,8 +65,7 @@ class _ECGChartState extends State<ECGChart> {
         gridData: _buildGridData(),
         borderData: _buildBorderData(),
         extraLinesData: ExtraLinesData(
-          // Показываем пики только если showPeaks == true
-          verticalLines: widget.showTruePeaks ? truePeaks : [],
+          verticalLines: allVerticalLines,
         ),
         minX: visibleSpots.first.x,
         maxX: visibleSpots.last.x,
@@ -81,15 +92,33 @@ class _ECGChartState extends State<ECGChart> {
     final start = widget.startIndex;
     final end = start + widget.pointsPerScreen;
     
-    return widget.data.peaks
+    return widget.data.truePeaks
         .where((index) => index >= start && index < end)
         .map((index) {
           final spot = widget.data.spots[index];
           return VerticalLine(
             x: spot.x,
-            color: AppColors.peakLine,
+            color: AppColors.truePeakLine,
             strokeWidth: 2,
-            dashArray: const [4, 4], 
+            dashArray: const [4, 4],
+          );
+        })
+        .toList();
+  }
+
+  List<VerticalLine> _getPredPeaks() {
+    final start = widget.startIndex;
+    final end = start + widget.pointsPerScreen;
+    
+    return widget.data.predPeaks
+        .where((index) => index >= start && index < end)
+        .map((index) {
+          final spot = widget.data.spots[index];
+          return VerticalLine(
+            x: spot.x,
+            color: AppColors.predPeakLine,
+            strokeWidth: 2,
+            dashArray: const [4, 4],
           );
         })
         .toList();

@@ -105,22 +105,21 @@ class FileService {
   }
   
   // Получение полного пути к файлу пиков
-  String getPeaksFilePath(String folder, String number) {
-    // Для peaks файлов используется формат: assets/peaks/{number}peaks.csv
-    // Без папки в имени файла
-    return 'assets/true_peaks/$folder/${number}_peaks.csv';
+  String getPeaksFilePath(String folder, String number, String type) {
+    // type может быть 'true_peaks' или 'pred_peaks'
+    return 'assets/$type/$folder/${number}_peaks.csv';
   }
   
   // Проверка существования peaks файла
-  Future<bool> hasPeaksFile(String folder, String number) async {
+  Future<bool> hasPeaksFile(String folder, String number, String type) async {
     try {
       final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
       final allAssets = manifest.listAssets();
-      final peaksPath = getPeaksFilePath(folder, number);
+      final peaksPath = getPeaksFilePath(folder, number, type);
       return allAssets.contains(peaksPath);
     } catch (e) {
       try {
-        await rootBundle.loadString(getPeaksFilePath(folder, number));
+        await rootBundle.loadString(getPeaksFilePath(folder, number, type));
         return true;
       } catch (_) {
         return false;
@@ -137,7 +136,8 @@ class FileService {
         'exists': true,
         'size': content.length,
         'lines': lines.length,
-        'hasPeaks': await hasPeaksFile(folder, number),
+        'hasTruePeaks': await hasPeaksFile(folder, number, 'true_peaks'),
+        'hasPredPeaks': await hasPeaksFile(folder, number, 'pred_peaks'),
       };
     } catch (e) {
       return {

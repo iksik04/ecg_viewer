@@ -13,7 +13,8 @@ class AppColors {
   
   // Цвета для графиков
   static const Color ecgLine = Colors.blue;
-  static const Color peakLine = Colors.red;
+  static const Color truePeakLine = Colors.red; // Истинные пики - красные
+  static const Color predPeakLine = Colors.green; // Предсказанные пики - зеленые
   
   // Цвета для текста
   static const Color textPrimary = Colors.white;
@@ -85,5 +86,6 @@ class AppStrings {
   
   // Пути к файлам 
   static const String dataFilePath = 'assets/data/';
-  static const String peaksFilePath = 'assets/true_peaks/';
+  static const String truePeaksFilePath = 'assets/true_peaks/';
+  static const String predPeaksFilePath = 'assets/pred_peaks/';
 }

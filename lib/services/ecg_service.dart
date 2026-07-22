@@ -1,5 +1,4 @@
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_csv/flutter_csv.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/ecg_data.dart';
 import '../services/file_service.dart';
@@ -10,11 +9,12 @@ class ECGService {
   Future<ECGData> loadECGData(String folder, String number) async {
     try {
       final spots = await _loadSpots(folder, number);
-      final peaks = await _loadPeaks(folder, number);
-      return ECGData(spots: spots, peaks: peaks);
+      final truePeaks = await _loadPeaks(folder, number, 'true_peaks');
+      final predPeaks = await _loadPeaks(folder, number, 'pred_peaks');
+      return ECGData(spots: spots, truePeaks: truePeaks, predPeaks: predPeaks);
     } catch (e) {
       print('Ошибка загрузки данных для папки $folder, записи #$number: $e');
-      return ECGData(spots: [], peaks: []);
+      return ECGData(spots: [], truePeaks: [], predPeaks: []);
     }
   }
 
@@ -91,9 +91,9 @@ class ECGService {
     }
   }
 
-  Future<List<int>> _loadPeaks(String folder, String number) async {
+  Future<List<int>> _loadPeaks(String folder, String number, String type) async {
     try {
-      String path = _fileService.getPeaksFilePath(folder, number);
+      String path = _fileService.getPeaksFilePath(folder, number, type);
       final rawData = await rootBundle.loadString(path);
       
       // Разбиваем на строки и фильтруем пустые
@@ -146,7 +146,7 @@ class ECGService {
       return peaks;
       
     } catch (e) {
-      print('Ошибка загрузки peaks для папки $folder, записи #$number: $e');
+      print('Ошибка загрузки peaks для папки $folder, записи #$number, типа $type: $e');
       return [];
     }
   }
