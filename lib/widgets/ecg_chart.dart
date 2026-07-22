@@ -7,14 +7,16 @@ class ECGChart extends StatefulWidget {
   final ECGData data;
   final int startIndex;
   final int pointsPerScreen;
-  final double targetSecondsPerScreen; // Добавлено
+  final double targetSecondsPerScreen;
+  final bool showTruePeaks; // Добавлено
 
   const ECGChart({
     super.key,
     required this.data,
     required this.startIndex,
     required this.pointsPerScreen,
-    required this.targetSecondsPerScreen, // Новый параметр
+    required this.targetSecondsPerScreen,
+    this.showTruePeaks = true, // По умолчанию показываем пики
   });
 
   @override
@@ -22,6 +24,7 @@ class ECGChart extends StatefulWidget {
 }
 
 class _ECGChartState extends State<ECGChart> {
+
   @override
   Widget build(BuildContext context) {
     final visibleSpots = _getVisibleSpots();
@@ -32,13 +35,12 @@ class _ECGChartState extends State<ECGChart> {
       );
     }
 
-    final visiblePeaks = _getVisiblePeaks();
+    final truePeaks = _getTruePeaks();
 
     return LineChart(
       LineChartData(
         backgroundColor: AppColors.white,
         lineBarsData: [
-          // Основной сигнал ECG
           LineChartBarData(
             spots: visibleSpots,
             isCurved: false,
@@ -51,7 +53,8 @@ class _ECGChartState extends State<ECGChart> {
         gridData: _buildGridData(),
         borderData: _buildBorderData(),
         extraLinesData: ExtraLinesData(
-          verticalLines: visiblePeaks,
+          // Показываем пики только если showPeaks == true
+          verticalLines: widget.showTruePeaks ? truePeaks : [],
         ),
         minX: visibleSpots.first.x,
         maxX: visibleSpots.last.x,
@@ -74,7 +77,7 @@ class _ECGChartState extends State<ECGChart> {
     );
   }
 
-  List<VerticalLine> _getVisiblePeaks() {
+  List<VerticalLine> _getTruePeaks() {
     final start = widget.startIndex;
     final end = start + widget.pointsPerScreen;
     
@@ -103,7 +106,6 @@ class _ECGChartState extends State<ECGChart> {
   }
 
   FlTitlesData _buildTitlesData() {
-    // Вычисляем интервал для оси X на основе targetSecondsPerScreen
     final interval = _calculateXInterval();
     
     return FlTitlesData(
@@ -122,7 +124,7 @@ class _ECGChartState extends State<ECGChart> {
         axisNameSize: 30,
         sideTitles: SideTitles(
           showTitles: true,
-          interval: interval, // Динамический интервал
+          interval: interval,
           reservedSize: 40,
           getTitlesWidget: _customBottomTextWidget,
         ),
@@ -149,9 +151,8 @@ class _ECGChartState extends State<ECGChart> {
     
     final timeRange = visibleSpots.last.x - visibleSpots.first.x;
     
-    // Вычисляем интервал в зависимости от диапазона времени
     if (timeRange <= 2) {
-      return 0.2; // Для малого масштаба
+      return 0.2;
     } else if (timeRange <= 5) {
       return 0.5;
     } else if (timeRange <= 10) {
@@ -170,7 +171,7 @@ class _ECGChartState extends State<ECGChart> {
       show: true,
       drawVerticalLine: true,
       horizontalInterval: 0.1,
-      verticalInterval: _calculateXInterval() / 2, // Половина интервала для сетки
+      verticalInterval: _calculateXInterval() / 2,
       getDrawingHorizontalLine: (value) {
         return const FlLine(
           color: AppColors.grey,
