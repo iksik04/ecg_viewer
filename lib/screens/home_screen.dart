@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/gestures.dart';
 import '../constants/app_constants.dart';
 import '../services/ecg_service.dart';
 import '../widgets/ecg_chart.dart';
@@ -21,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   
   int _currentStartIndex = 0;
   int _pointsPerScreen = 200;
+  double _targetSecondsPerScreen = 10.0; // Добавлено: текущее значение targetSecondsPerScreen
 
   @override
   void initState() {
@@ -68,6 +70,38 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _handleScrollZoom(ScrollDirection direction) {
+    setState(() {
+      if (direction == ScrollDirection.forward) {
+        // Увеличиваем масштаб (уменьшаем targetSecondsPerScreen)
+        _targetSecondsPerScreen = (_targetSecondsPerScreen * 0.8).clamp(2.0, 30.0);
+      } else {
+        // Уменьшаем масштаб (увеличиваем targetSecondsPerScreen)
+        _targetSecondsPerScreen = (_targetSecondsPerScreen * 1.25).clamp(2.0, 30.0);
+      }
+      
+      // Пересчитываем количество точек на экране
+      _futureData?.then((data) {
+        if (data.spots.isNotEmpty) {
+          final pointsPerScreen = _calculatePointsPerScreen(
+            MediaQuery.of(context).size.width - 40, // учитываем padding
+            data.spots,
+            _targetSecondsPerScreen
+          );
+          setState(() {
+            _pointsPerScreen = pointsPerScreen;
+            // Корректируем текущую позицию, если она выходит за пределы
+            final totalPoints = data.spots.length;
+            final maxStart = totalPoints - _pointsPerScreen;
+            if (_currentStartIndex > maxStart) {
+              _currentStartIndex = maxStart > 0 ? maxStart : 0;
+            }
+          });
+        }
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,12 +136,26 @@ class _HomeScreenState extends State<HomeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          '$_currentFolder - Запись #$_currentNumber',
-          style: const TextStyle(
-            fontSize: 20,
-            color: AppColors.primary,
-            fontWeight: FontWeight.bold,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$_currentFolder - Запись #$_currentNumber',
+                style: const TextStyle(
+                  fontSize: 20,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Масштаб: ${_targetSecondsPerScreen.toStringAsFixed(1)} сек/экран',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
           ),
         ),
         Row(
@@ -230,8 +278,11 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = snapshot.data!;
         return LayoutBuilder(
           builder: (context, constraints) {
-            const double targetSecondsPerScreen = 10.0;
-            final pointsPerScreen = _calculatePointsPerScreen(constraints.maxWidth, data.spots, targetSecondsPerScreen);
+            final pointsPerScreen = _calculatePointsPerScreen(
+              constraints.maxWidth, 
+              data.spots, 
+              _targetSecondsPerScreen
+            );
             
             if (pointsPerScreen != _pointsPerScreen) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -244,10 +295,22 @@ class _HomeScreenState extends State<HomeScreen> {
             return Column(
               children: [
                 Expanded(
-                  child: ECGChart(
-                    data: data,
-                    startIndex: _currentStartIndex,
-                    pointsPerScreen: _pointsPerScreen,
+                  child: Listener(
+                    onPointerSignal: (event) {
+                      if (event is PointerScrollEvent) {
+                        // Определяем направление прокрутки
+                        final scrollDirection = event.scrollDelta.dy > 0 
+                            ? ScrollDirection.backward 
+                            : ScrollDirection.forward;
+                        _handleScrollZoom(scrollDirection);
+                      }
+                    },
+                    child: ECGChart(
+                      data: data,
+                      startIndex: _currentStartIndex,
+                      pointsPerScreen: _pointsPerScreen,
+                      targetSecondsPerScreen: _targetSecondsPerScreen, // Передаем значение
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -299,4 +362,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+// Добавлен enum для направления прокрутки
+enum ScrollDirection {
+  forward,
+  backward,
 }

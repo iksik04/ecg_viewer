@@ -7,12 +7,14 @@ class ECGChart extends StatefulWidget {
   final ECGData data;
   final int startIndex;
   final int pointsPerScreen;
+  final double targetSecondsPerScreen; // Добавлено
 
   const ECGChart({
     super.key,
     required this.data,
     required this.startIndex,
     required this.pointsPerScreen,
+    required this.targetSecondsPerScreen, // Новый параметр
   });
 
   @override
@@ -101,6 +103,9 @@ class _ECGChartState extends State<ECGChart> {
   }
 
   FlTitlesData _buildTitlesData() {
+    // Вычисляем интервал для оси X на основе targetSecondsPerScreen
+    final interval = _calculateXInterval();
+    
     return FlTitlesData(
       show: true,
       topTitles: const AxisTitles(
@@ -117,7 +122,7 @@ class _ECGChartState extends State<ECGChart> {
         axisNameSize: 30,
         sideTitles: SideTitles(
           showTitles: true,
-          interval: 1,
+          interval: interval, // Динамический интервал
           reservedSize: 40,
           getTitlesWidget: _customBottomTextWidget,
         ),
@@ -138,12 +143,34 @@ class _ECGChartState extends State<ECGChart> {
     );
   }
 
+  double _calculateXInterval() {
+    final visibleSpots = _getVisibleSpots();
+    if (visibleSpots.isEmpty) return 1.0;
+    
+    final timeRange = visibleSpots.last.x - visibleSpots.first.x;
+    
+    // Вычисляем интервал в зависимости от диапазона времени
+    if (timeRange <= 2) {
+      return 0.2; // Для малого масштаба
+    } else if (timeRange <= 5) {
+      return 0.5;
+    } else if (timeRange <= 10) {
+      return 1.0;
+    } else if (timeRange <= 20) {
+      return 2.0;
+    } else if (timeRange <= 50) {
+      return 5.0;
+    } else {
+      return 10.0;
+    }
+  }
+
   FlGridData _buildGridData() {
     return FlGridData(
       show: true,
       drawVerticalLine: true,
       horizontalInterval: 0.1,
-      verticalInterval: 0.5,
+      verticalInterval: _calculateXInterval() / 2, // Половина интервала для сетки
       getDrawingHorizontalLine: (value) {
         return const FlLine(
           color: AppColors.grey,
@@ -186,7 +213,7 @@ class _ECGChartState extends State<ECGChart> {
     );
   }
 
-    Widget _customBottomTextWidget(double value, TitleMeta meta) {
+  Widget _customBottomTextWidget(double value, TitleMeta meta) {
     final min = meta.min;
     final max = meta.max;
                    
@@ -196,7 +223,7 @@ class _ECGChartState extends State<ECGChart> {
     return Padding(
       padding: const EdgeInsets.all(10),
       child: Text(
-        value.toStringAsFixed(0),
+        value.toStringAsFixed(1),
         textAlign: TextAlign.right,
         style: AppTextStyles.axisValue,
       ),
