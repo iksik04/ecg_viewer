@@ -99,7 +99,7 @@ class _ECGChartState extends State<ECGChart> {
           return VerticalLine(
             x: spot.x,
             color: AppColors.truePeakLine,
-            strokeWidth: 2,
+            strokeWidth: 4,
             dashArray: const [4, 4],
           );
         })
@@ -117,7 +117,7 @@ class _ECGChartState extends State<ECGChart> {
           return VerticalLine(
             x: spot.x,
             color: AppColors.predPeakLine,
-            strokeWidth: 2,
+            strokeWidth: 4,
             dashArray: const [4, 4],
           );
         })

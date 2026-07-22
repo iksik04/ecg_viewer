@@ -2,7 +2,6 @@ import 'package:flutter/services.dart' show rootBundle, AssetManifest;
 import 'dart:async';
 
 class FileService {
-  static List<String>? _cachedFiles;
   static Map<String, List<String>>? _cachedFilesByFolder;
   
   // Получение списка доступных папок
@@ -149,7 +148,6 @@ class FileService {
   
   // Очистка кэша
   void clearCache() {
-    _cachedFiles = null;
     _cachedFilesByFolder = null;
   }
 }
