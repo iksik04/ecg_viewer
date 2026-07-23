@@ -64,15 +64,14 @@ class FileService {
     final folderPath = 'assets/data/$folder/';
     final dataFiles = allAssets
         .where((asset) => 
-            asset.startsWith(folderPath) && 
-            asset.endsWith('_channel1.csv'))
+            asset.startsWith(folderPath))
         .toList();
     
     // Извлекаем номера из имен файлов
     final numbers = dataFiles.map((filePath) {
       final fileName = filePath.split('/').last;
       // Удаляем '_channel1.csv' и получаем идентификатор
-      return fileName.replaceFirst('_channel1.csv', '');
+      return fileName.replaceFirst('.csv', '');
     }).toList();
     
     // Сортируем с учетом того, что имена могут быть не только числами
@@ -100,7 +99,7 @@ class FileService {
   
   // Получение полного пути к файлу данных
   String getDataFilePath(String folder, String number) {
-    return 'assets/data/$folder/${number}_channel1.csv';
+    return 'assets/data/$folder/${number}.csv';
   }
   
   // Получение полного пути к файлу пиков
