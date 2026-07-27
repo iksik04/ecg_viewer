@@ -66,24 +66,6 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-     - assets/data/AHADB/
-     - assets/data/CUDB/
-     - assets/data/EDB/
-     - assets/data/MITDB/
-     - assets/data/NSTDB/
-     - assets/data/VFDB/
-     - assets/true_peaks/AHADB/
-     - assets/true_peaks/CUDB/
-     - assets/true_peaks/EDB/
-     - assets/true_peaks/MITDB/
-     - assets/true_peaks/NSTDB/
-     - assets/true_peaks/VFDB/
-     - assets/pred_peaks/AHADB/
-     - assets/pred_peaks/CUDB/
-     - assets/pred_peaks/EDB/
-     - assets/pred_peaks/MITDB/
-     - assets/pred_peaks/NSTDB/
-     - assets/pred_peaks/VFDB/
      - assets/ECG_DB/AHADB/
      - assets/ECG_DB/CUDB/
      - assets/ECG_DB/EDB/

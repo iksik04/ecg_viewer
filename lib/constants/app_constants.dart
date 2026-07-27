@@ -83,9 +83,4 @@ class AppStrings {
   static const String loadingData = 'Загрузка данных...';
   static const String noData = 'Нет данных ECG';
   static const String errorLoading = 'Ошибка загрузки данных:';
-  
-  // Пути к файлам 
-  static const String dataFilePath = 'assets/data/';
-  static const String truePeaksFilePath = 'assets/true_peaks/';
-  static const String predPeaksFilePath = 'assets/pred_peaks/';
 }
