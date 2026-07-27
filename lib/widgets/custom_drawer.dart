@@ -3,12 +3,12 @@ import '../constants/app_constants.dart';
 import '../services/file_service.dart';
 
 class CustomDrawer extends StatefulWidget {
-  final Function(String, String) onNumberTap; // folder, number
+  final Function(String, String) onRecordTap; // folder, record
   final VoidCallback onSettingsTap;
 
   const CustomDrawer({
     super.key,
-    required this.onNumberTap,
+    required this.onRecordTap,
     required this.onSettingsTap,
   });
 
@@ -19,7 +19,7 @@ class CustomDrawer extends StatefulWidget {
 class _CustomDrawerState extends State<CustomDrawer> {
   final FileService _fileService = FileService();
   List<String> _folders = [];
-  Map<String, List<String>> _filesByFolder = {};
+  Map<String, List<String>> _recordsByFolder = {};
   Map<String, bool> _expandedFolders = {};
   bool _isLoading = true;
   String? _errorMessage;
@@ -39,21 +39,21 @@ class _CustomDrawerState extends State<CustomDrawer> {
     try {
       final folders = await _fileService.getAvailableFolders();
       
-      // Загружаем файлы для каждой папки
-      final Map<String, List<String>> filesMap = {};
+      // Загружаем записи для каждой папки
+      final Map<String, List<String>> recordsMap = {};
       for (final folder in folders) {
-        final files = await _fileService.getAvailableFilesForFolder(folder);
-        filesMap[folder] = files;
+        final records = await _fileService.getAvailableRecordsForFolder(folder);
+        recordsMap[folder] = records;
         _expandedFolders[folder] = false; // По умолчанию свернуто
       }
       
       setState(() {
         _folders = folders;
-        _filesByFolder = filesMap;
+        _recordsByFolder = recordsMap;
         _isLoading = false;
         
         if (folders.isEmpty) {
-          _errorMessage = 'Папки не найдены. Проверьте структуру assets/data/';
+          _errorMessage = 'Папки не найдены. Проверьте структуру assets/ECG_DB/';
         }
       });
     } catch (e) {
@@ -150,7 +150,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
     return Column(
       children: _folders.map((folder) {
-        final files = _filesByFolder[folder] ?? [];
+        final records = _recordsByFolder[folder] ?? [];
         final isExpanded = _expandedFolders[folder] ?? false;
         
         return Column(
@@ -175,13 +175,13 @@ class _CustomDrawerState extends State<CustomDrawer> {
               ),
               onTap: () => _toggleFolder(folder),
             ),
-            // Список файлов (если развернуто)
+            // Список записей (если развернуто)
             if (isExpanded) ...[
-              if (files.isEmpty)
+              if (records.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   child: Text(
-                    'Нет файлов',
+                    'Нет записей',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey,
@@ -189,21 +189,21 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   ),
                 )
               else
-                ...files.map((number) {
+                ...records.map((record) {
                   return ListTile(
                     leading: const Icon(
-                      Icons.insert_drive_file,
+                      Icons.fiber_manual_record,
                       color: AppColors.grey,
-                      size: 18,
+                      size: 14,
                     ),
                     title: Text(
-                      'Запись #$number',
+                      'Запись $record',
                       style: const TextStyle(fontSize: 14),
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 30),
                     onTap: () {
                       Navigator.pop(context);
-                      widget.onNumberTap(folder, number);
+                      widget.onRecordTap(folder, record);
                     },
                   );
                 }),

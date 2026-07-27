@@ -84,6 +84,12 @@ flutter:
      - assets/pred_peaks/MITDB/
      - assets/pred_peaks/NSTDB/
      - assets/pred_peaks/VFDB/
+     - assets/ECG_DB/AHADB/
+     - assets/ECG_DB/CUDB/
+     - assets/ECG_DB/EDB/
+     - assets/ECG_DB/MITDB/
+     - assets/ECG_DB/NSTDB/
+     - assets/ECG_DB/VFDB/
     # - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
