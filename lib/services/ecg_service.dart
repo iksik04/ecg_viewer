@@ -1,153 +1,117 @@
-/* import 'package:flutter/services.dart' show rootBundle;
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/ecg_data.dart';
-import '../services/file_service.dart';
 
 class ECGService {
-  final FileService _fileService = FileService();
-
+  final String _rdsampPath = 'rdsamp';
+  
+  /// Загрузка данных ЭКГ с использованием rdsamp
   Future<ECGData> loadECGData(String folder, String number) async {
     try {
-      final spots = await _loadSpots(folder, number);
-      final truePeaks = await _loadPeaks(folder, number, 'true_peaks');
-      final predPeaks = await _loadPeaks(folder, number, 'pred_peaks');
-      return ECGData(spots: spots, truePeaks: truePeaks, predPeaks: predPeaks);
+      // Путь к файлам записи (без расширения)
+      final filePath = 'assets/ECG_DB/$folder/$number';
+      
+      // Загружаем данные через rdsamp
+      final spots = await _loadSpotsWithRDSamp(filePath);
+      
+      return ECGData(
+        spots: spots,
+        truePeaks: [],
+        predPeaks: [],
+      );
     } catch (e) {
       print('Ошибка загрузки данных для папки $folder, записи #$number: $e');
       return ECGData(spots: [], truePeaks: [], predPeaks: []);
     }
   }
-
-  Future<List<FlSpot>> _loadSpots(String folder, String number) async {
-    String path = _fileService.getDataFilePath(folder, number);
+  
+  /// Загрузка данных через rdsamp
+  Future<List<FlSpot>> _loadSpotsWithRDSamp(String filePath) async {
     try {
-      final rawData = await rootBundle.loadString(path);
-      
-      // Разбиваем на строки и фильтруем пустые
-      final lines = rawData.split('\n')
-          .where((line) => line.trim().isNotEmpty)
-          .toList();
-      
-      if (lines.isEmpty) {
-        print('Файл $path пуст');
+      // Проверяем существование .dat файла
+      final datFile = File(filePath + '.dat');
+      if (!await datFile.exists()) {
+        print('Файл $filePath.dat не найден');
         return [];
       }
       
-      // Проверяем, есть ли заголовок
-      int startIndex = 0;
-      final firstLine = lines[0].trim();
-      if (firstLine.contains(RegExp(r'[a-zA-Z]'))) {
-        // Если первая строка содержит буквы, считаем её заголовком
-        startIndex = 1;
-      }
+      // Запускаем rdsamp для чтения данных
+      // -r: путь к файлу (без расширения)
+      // -f: начальное время (0)
+      // -t: конечное время (читаем весь файл)
+      // -p: вывод в формате с временными метками
+      // -v: вывод значений
+      final process = await Process.start(
+        _rdsampPath,
+        ['-r', filePath, '-f', '0', '-t', 'end', '-p', '-v'],
+        mode: ProcessStartMode.normal,
+      );
       
-      final List<FlSpot> spots = [];
+      // Читаем вывод
+      final output = await process.stdout.transform(utf8.decoder).join();
+      final stderr = await process.stderr.transform(utf8.decoder).join();
       
-      for (int i = startIndex; i < lines.length; i++) {
-        try {
-          final line = lines[i].trim();
-          if (line.isEmpty) continue;
-          
-          // Разделяем строку по запятой или точке с запятой
-          final parts = line.contains(';') 
-              ? line.split(';') 
-              : line.split(',');
-          
-          if (parts.length < 2) {
-            // Пропускаем строки с недостаточным количеством данных
-            continue;
-          }
-          
-          // Очищаем значения от пробелов и заменяем запятую на точку
-          String xStr = parts[0].trim().replaceAll(',', '.');
-          String yStr = parts[1].trim().replaceAll(',', '.');
-          
-          // Пропускаем пустые значения
-          if (xStr.isEmpty || yStr.isEmpty) continue;
-          
-          // Парсим значения
-          final double x = double.parse(xStr);
-          final double y = double.parse(yStr);
-          
-          // Проверяем на допустимые значения
-          if (x.isFinite && y.isFinite) {
-            spots.add(FlSpot(x, y));
-          } else {
-            print('Пропущен некорректный фрейм: x=$x, y=$y');
-          }
-        } catch (e) {
-          // Пропускаем некорректные строки
-          print('Ошибка парсинга строки ${i + 1}: $e');
-          continue;
-        }
-      }
-      
-      print('Загружено ${spots.length} точек из файла $path');
-      return spots;
-      
-    } catch (e) {
-      print('Ошибка загрузки файла $path: $e');
-      return [];
-    }
-  }
-
-  Future<List<int>> _loadPeaks(String folder, String number, String type) async {
-    try {
-      String path = _fileService.getPeaksFilePath(folder, number, type);
-      final rawData = await rootBundle.loadString(path);
-      
-      // Разбиваем на строки и фильтруем пустые
-      final lines = rawData.split('\n')
-          .where((line) => line.trim().isNotEmpty)
-          .toList();
-      
-      if (lines.isEmpty) {
-        print('Файл peaks $path пуст');
+      // Проверяем ошибки
+      final exitCode = await process.exitCode;
+      if (exitCode != 0) {
+        print('Ошибка rdsamp (код $exitCode): $stderr');
         return [];
       }
       
-      // Проверяем, есть ли заголовок
-      int startIndex = 0;
-      final firstLine = lines[0].trim();
-      if (firstLine.contains(RegExp(r'[a-zA-Z]'))) {
-        startIndex = 1;
-      }
-      
-      final List<int> peaks = [];
-      
-      for (int i = startIndex; i < lines.length; i++) {
-        try {
-          final line = lines[i].trim();
-          if (line.isEmpty) continue;
-          
-          // Разделяем строку
-          final parts = line.contains(';') 
-              ? line.split(';') 
-              : line.split(',');
-          
-          if (parts.isEmpty) continue;
-          
-          String valueStr = parts[0].trim();
-          if (valueStr.isEmpty) continue;
-          
-          // Преобразуем в число с плавающей точкой, затем в целое
-          final double value = double.parse(valueStr);
-          final int intValue = value.round();
-          
-          peaks.add(intValue);
-          
-        } catch (e) {
-          print('Ошибка парсинга peaks строки ${i + 1}: $e');
-          continue;
-        }
-      }
-      
-      print('Загружено ${peaks.length} пиков из файла $path');
-      return peaks;
+      // Парсим вывод
+      return _parseRDSampOutput(output);
       
     } catch (e) {
-      print('Ошибка загрузки peaks для папки $folder, записи #$number, типа $type: $e');
+      print('Ошибка выполнения rdsamp: $e');
       return [];
     }
   }
-}*/
+  
+  /// Парсинг вывода rdsamp
+  List<FlSpot> _parseRDSampOutput(String output) {
+    final lines = output.split('\n')
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+    
+    if (lines.isEmpty) {
+      print('Вывод rdsamp пуст');
+      return [];
+    }
+    
+    final spots = <FlSpot>[];
+    
+    for (final line in lines) {
+      try {
+        // Формат с ключом -p: "время\tзначение1\tзначение2..."
+        final parts = line.trim().split(RegExp(r'\s+'));
+        if (parts.length < 2) continue;
+        
+        final time = double.parse(parts[0]);
+        // Берем первый канал (индекс 1)
+        final value = double.parse(parts[1]);
+        
+        if (time.isFinite && value.isFinite) {
+          spots.add(FlSpot(time, value));
+        }
+      } catch (e) {
+        // Пропускаем некорректные строки
+        continue;
+      }
+    }
+    
+    print('Загружено ${spots.length} точек через rdsamp');
+    return spots;
+  }
+  
+  /// Проверка доступности rdsamp
+  Future<bool> isRDSampAvailable() async {
+    try {
+      final result = await Process.run(_rdsampPath, ['--help']);
+      return result.exitCode == 0;
+    } catch (e) {
+      return false;
+    }
+  }
+}
