@@ -509,15 +509,27 @@ List<double> readECGData(String filePath) {
   return data;
 }
 
-/// Write peaks to CSV file
-void writePeaksToCSV(String filePath, List<int> peaks) {
+/// Write peaks to CSV file with time format (MM:SS.mmm)
+void writePeaksToCSV(String filePath, List<int> peaks, int samplingFreq) {
   try {
     File file = File(filePath);
     StringBuffer content = StringBuffer();
-    content.writeln('peaks');
+    
     for (int peak in peaks) {
-      content.writeln(peak.toString());
+      // Вычисляем время в секундах
+      double timeInSeconds = peak / samplingFreq;
+      // Форматируем как MM:SS.mmm
+      int minutes = timeInSeconds ~/ 60;
+      double seconds = timeInSeconds % 60;
+      int wholeSeconds = seconds.floor();
+      int milliseconds = ((seconds - wholeSeconds) * 1000).round();
+      
+      String formattedTime = '${minutes.toString().padLeft(1, '0')}:${wholeSeconds.toString().padLeft(2, '0')}.${milliseconds.toString().padLeft(3, '0')}';
+      
+      // Записываем строку: время, номер отсчета, N (разделитель - пробел)
+      content.writeln('$formattedTime $peak N');
     }
+    
     file.writeAsStringSync(content.toString());
     print('Peaks saved to: $filePath');
   } catch (e) {
@@ -526,7 +538,6 @@ void writePeaksToCSV(String filePath, List<int> peaks) {
   }
 }
 
-/// Process all CSV files in a directory
 /// Process all CSV files in a directory
 void processDirectory(String sourceDir, String outputDir, int samplingFreq) {
   Directory source = Directory(sourceDir);
@@ -602,7 +613,7 @@ void processDirectory(String sourceDir, String outputDir, int samplingFreq) {
       outputPath = outputPath.replaceAll('\\', Platform.pathSeparator);
 
       // Save peaks
-      writePeaksToCSV(outputPath, peaks);
+      writePeaksToCSV(outputPath, peaks, samplingFreq);
       
       // Reset filter states for next file
       hprevFilterd = 0.0;
