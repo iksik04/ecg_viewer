@@ -140,7 +140,7 @@ class FileService {
   // Получение списка всех файлов для записи
   Future<Map<String, bool>> getRecordFiles(String folder, String record) async {
     final basePath = 'assets/ECG_DB/$folder/$record';
-    final extensions = ['aed', 'atr', 'hea', 'dat'];
+    final extensions = ['aed', 'atr', 'hea', 'dat', 'gqrs'];
     final result = <String, bool>{};
     
     for (final ext in extensions) {

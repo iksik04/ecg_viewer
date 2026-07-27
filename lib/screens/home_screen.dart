@@ -33,13 +33,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _loadData(String folder, String number) {
-    setState(() {
-      _currentFolder = folder;
-      _currentNumber = number;
-      _currentStartIndex = 0;
-      _futureData = _ecgService.loadECGData(folder, number);
-    });
-  }
+  setState(() {
+    _currentFolder = folder;
+    _currentNumber = number;
+    _currentStartIndex = 0;
+    _futureData = _ecgService.loadECGData(folder, number);
+  });
+}
 
   int _calculatePointsPerScreen(double containerWidth, List<FlSpot> spots, double targetSecondsPerScreen) {
     if (spots.isEmpty) return 200;
