@@ -1,75 +1,7 @@
 import 'dart:io';
+import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
-
-List<double> convolution(List<double> signal) {
-  List<double> sig1 = [...signal];
-  List<double> sig2 = [for (int i = 0; i < 20; i++) 0.05];
-  List<double> conv = [for (int i = 0; i < (sig1.length - sig2.length); i++) 0];
-  for (int l = 0; l < conv.length; l++) {
-    for (int i = 0; i < sig2.length; i++) {
-      conv[l] += sig1[l - i + sig2.length] * sig2[i];
-    }
-  }
-
-  List<double> d = [for (int i = 0; i < signal.length; i++) 0];
-  for (int l = 0; l < conv.length; l++) {
-    d[l + 11] = conv[l];
-  }
-  return d;
-}
-
-double geMax(List signal) {
-  double largestGeekValue = signal[0];
-
-  for (var i = 0; i < signal.length; i++) {
-    if (signal[i] > largestGeekValue) {
-      largestGeekValue = signal[i];
-    }
-  }
-  return largestGeekValue;
-}
-
-List diff(List signal) {
-  List out = [];
-  if (signal.length < 2) {
-    return [];
-  }
-  for (int i = 0; i < signal.length - 1; i++) {
-    out.add(signal[i + 1] - signal[i]);
-  }
-  return out;
-}
-
-List unique(List arr) {
-  arr.sort();
-  List unique_list = [];
-
-  var last_added;
-
-  for (var element in arr) {
-    if (element != last_added) {
-      unique_list.add(element);
-      last_added = element;
-    }
-  }
-  return unique_list;
-}
-
-List divideList(List signal, int divider) {
-  List out = [];
-  for (int i = 0; i < signal.length; i++) {
-    out.add(signal[i] / divider);
-  }
-  return out;
-}
-
-double average(List signal) {
-  double summ = 0;
-  for (int i = 0; i < signal.length; i++) {
-    summ += signal[i];
-  }
-  return summ / signal.length;
-}
 
 class PanTompkinsQRS {
   List<double> bandPassFilter(List<double> signal) {
@@ -405,19 +337,375 @@ class PanTompkinsQRS {
   }
 }
 
-/// vars for High Pass Filter
+/// Вспомогательные функции
+List<double> convolution(List<double> signal) {
+  List<double> sig1 = [...signal];
+  List<double> sig2 = [for (int i = 0; i < 20; i++) 0.05];
+  List<double> conv = [for (int i = 0; i < (sig1.length - sig2.length); i++) 0];
+  for (int l = 0; l < conv.length; l++) {
+    for (int i = 0; i < sig2.length; i++) {
+      conv[l] += sig1[l - i + sig2.length] * sig2[i];
+    }
+  }
+
+  List<double> d = [for (int i = 0; i < signal.length; i++) 0];
+  for (int l = 0; l < conv.length; l++) {
+    d[l + 11] = conv[l];
+  }
+  return d;
+}
+
+double geMax(List signal) {
+  double largestGeekValue = signal[0];
+
+  for (var i = 0; i < signal.length; i++) {
+    if (signal[i] > largestGeekValue) {
+      largestGeekValue = signal[i];
+    }
+  }
+  return largestGeekValue;
+}
+
+List diff(List signal) {
+  List out = [];
+  if (signal.length < 2) {
+    return [];
+  }
+  for (int i = 0; i < signal.length - 1; i++) {
+    out.add(signal[i + 1] - signal[i]);
+  }
+  return out;
+}
+
+List unique(List arr) {
+  arr.sort();
+  List unique_list = [];
+
+  var last_added;
+
+  for (var element in arr) {
+    if (element != last_added) {
+      unique_list.add(element);
+      last_added = element;
+    }
+  }
+  return unique_list;
+}
+
+List divideList(List signal, int divider) {
+  List out = [];
+  for (int i = 0; i < signal.length; i++) {
+    out.add(signal[i] / divider);
+  }
+  return out;
+}
+
+double average(List signal) {
+  double summ = 0;
+  for (int i = 0; i < signal.length; i++) {
+    summ += signal[i];
+  }
+  return summ / signal.length;
+}
+
+/// Чтение частоты дискретизации из файла .hea
+Future<double> getSampleRate(String filePath) async {
+  try {
+    final heaFile = File(filePath + '.hea');
+    if (!await heaFile.exists()) {
+      print('Предупреждение: файл .hea не найден, используется частота по умолчанию 360');
+      return 360.0;
+    }
+
+    final content = await heaFile.readAsString();
+    final lines = content.split('\n');
+    
+    // Первая строка содержит информацию о записи
+    for (final line in lines) {
+      if (line.trim().isEmpty) continue;
+      
+      final parts = line.trim().split(RegExp(r'\s+'));
+      if (parts.length >= 3) {
+        // Третье число - частота дискретизации
+        final sampleRate = double.tryParse(parts[2]);
+        if (sampleRate != null && sampleRate > 0) {
+          return sampleRate;
+        }
+      }
+      // После первой строки идут описания каналов, поэтому выходим
+      break;
+    }
+
+    print('Предупреждение: не удалось определить частоту дискретизации, используется 360');
+    return 360.0;
+  } catch (e) {
+    print('Ошибка чтения файла .hea: $e');
+    return 360.0;
+  }
+}
+
+/// Загрузка данных ЭКГ с помощью rdsamp
+Future<List<double>> loadECGDataWithRDSamp(String filePath, int channel) async {
+  try {
+    final datFile = File(filePath + '.dat');
+    if (!await datFile.exists()) {
+      print('Ошибка: файл .dat не найден: $filePath.dat');
+      return [];
+    }
+
+    final process = await Process.start(
+      'rdsamp',
+      ['-r', filePath, '-f', '0', '-t', 'end', '-p', '-v'],
+      mode: ProcessStartMode.normal,
+    );
+
+    final output = await process.stdout.transform(utf8.decoder).join();
+    final stderr = await process.stderr.transform(utf8.decoder).join();
+
+    final exitCode = await process.exitCode;
+    if (exitCode != 0) {
+      print('Ошибка выполнения rdsamp (код $exitCode): $stderr');
+      return [];
+    }
+
+    return _parseRDSampOutput(output, channel);
+  } catch (e) {
+    print('Ошибка выполнения rdsamp: $e');
+    return [];
+  }
+}
+
+List<double> _parseRDSampOutput(String output, int channel) {
+  final lines = output.split('\n')
+      .where((line) => line.trim().isNotEmpty)
+      .toList();
+
+  if (lines.isEmpty) {
+    print('Вывод rdsamp пуст');
+    return [];
+  }
+
+  final signal = <double>[];
+
+  for (final line in lines) {
+    try {
+      final parts = line.trim().split(RegExp(r'\s+'));
+      if (parts.length < channel + 2) continue;
+
+      final value = double.parse(parts[channel + 1]);
+
+      if (value.isFinite) {
+        signal.add(value);
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+  return signal;
+}
+
+/// Запись пиков в аннотационный файл с помощью wrann
+Future<void> writePeaksWithWRAnn(String filePath, List<int> peaks, int fs) async {
+  try {
+    final datFile = File(filePath + '.dat');
+    if (!await datFile.exists()) {
+      print('Ошибка: файл .dat не найден: $filePath.dat');
+      return;
+    }
+
+    // Формируем содержимое аннотации в правильном формате для wrann
+    final content = StringBuffer();
+    for (int peak in peaks) {
+      // Преобразуем номер выборки во время
+      double timeInSeconds = peak / fs;
+      int minutes = timeInSeconds ~/ 60;
+      double seconds = timeInSeconds % 60;
+      int wholeSeconds = seconds.floor();
+      int milliseconds = ((seconds - wholeSeconds) * 1000).round();
+      
+      // Формат: MM:SS.mmm SAMPLE_NUMBER N
+      // Пример: "0:02.072       518     N"
+      String formattedTime = '${minutes.toString().padLeft(1, '0')}:${wholeSeconds.toString().padLeft(2, '0')}.${milliseconds.toString().padLeft(3, '0')}';
+      content.writeln('$formattedTime       $peak     N');
+    }
+    
+    // Запускаем процесс
+    final process = await Process.start(
+      'wrann',
+      ['-r', filePath, '-a', 'gqrs'],
+      mode: ProcessStartMode.normal,
+    );
+
+    // Передаем данные в stdin
+    process.stdin.write(content.toString());
+    await process.stdin.close();
+
+    final output = await process.stdout.transform(utf8.decoder).join();
+    final stderr = await process.stderr.transform(utf8.decoder).join();
+
+    final exitCode = await process.exitCode;
+
+    if (exitCode != 0) {
+      print('Ошибка wrann (код $exitCode): $stderr');
+      if (stderr.isNotEmpty) {
+        print('stderr: $stderr');
+      }
+      if (output.isNotEmpty) {
+        print('stdout: $output');
+      }
+      return;
+    }
+  } catch (e) {
+    print('Ошибка записи аннотационного файла: $e');
+  }
+}
+
+/// Проверка доступности rdsamp
+Future<bool> isRDSampAvailable() async {
+  try {
+    final result = await Process.run('rdsamp', ['-v']);
+    return true;
+  } catch (e) {
+    try {
+      if (Platform.isWindows) {
+        final result = await Process.run('where', ['rdsamp']);
+        return result.exitCode == 0;
+      } else {
+        final result = await Process.run('which', ['rdsamp']);
+        return result.exitCode == 0;
+      }
+    } catch (e2) {
+      return false;
+    }
+  }
+}
+
+/// Проверка доступности wrann
+Future<bool> isWRAnnAvailable() async {
+  try {
+    final result = await Process.run('wrann', ['-v']);
+    return true;
+  } catch (e) {
+    try {
+      if (Platform.isWindows) {
+        final result = await Process.run('where', ['wrann']);
+        return result.exitCode == 0;
+      } else {
+        final result = await Process.run('which', ['wrann']);
+        return result.exitCode == 0;
+      }
+    } catch (e2) {
+      return false;
+    }
+  }
+}
+
+/// Обработка одной записи
+Future<void> processRecording(String folderPath, String recordNumber, int channel) async {
+
+  print('Обработка: $folderPath, запись $recordNumber, канал $channel');
+
+
+  // Проверяем доступность утилит
+  if (!await isRDSampAvailable()) {
+    print('Ошибка: rdsamp не найден. Установите WFDB toolkit.');
+    print('Проверьте, что rdsamp доступен в командной строке.');
+    return;
+  }
+  
+  if (!await isWRAnnAvailable()) {
+    print('Ошибка: wrann не найден. Установите WFDB toolkit.');
+    print('Проверьте, что wrann доступен в командной строке.');
+    return;
+  }
+
+  // Путь к файлам записи (без расширения)
+  final filePath = '$folderPath/$recordNumber';
+  
+  // Проверяем существование .dat файла
+  final datFile = File(filePath + '.dat');
+  if (!await datFile.exists()) {
+    print('Ошибка: файл $filePath.dat не найден');
+    return;
+  }
+
+  // Получаем частоту дискретизации
+  final sampleRate = await getSampleRate(filePath);
+  final fs = sampleRate.round();
+
+  // Загружаем данные через rdsamp
+  final ecgData = await loadECGDataWithRDSamp(filePath, channel);
+  if (ecgData.isEmpty) {
+    print('Ошибка: данные не загружены');
+    return;
+  }
+
+  print('Загружено ${ecgData.length} отсчётов, частота $fs Гц');
+
+  // Применяем фильтры
+  List<double> filteredData = [for (double i in ecgData) applyHighPassFilter(i)];
+  filteredData = [for (double i in filteredData) applyLowPassFilter(i)];
+
+  // Детектируем пики
+  final detector = PanTompkinsQRS();
+  late List<int> peaks;
+  late double heartRate;
+  (heartRate, peaks) = detector.solve(filteredData, fs);
+  
+  print('Результаты: ${heartRate.toStringAsFixed(2)} BPM, ${peaks.length} пиков');
+
+  // Сохраняем пики в .gqrs аннотацию
+  await writePeaksWithWRAnn(filePath, peaks, fs);
+
+  // Сбрасываем состояние фильтров
+  hprevFilterd = 0.0;
+  hprevUnFiltered = 0.0;
+  hprevprevUnfiltered = 0.0;
+  hprevprevFilterd = 0.0;
+  lprevFilterd = 0.0;
+  lprevUnFiltered = 0.0;
+  lprevprevUnfiltered = 0.0;
+  lprevprevFilterd = 0.0;
+}
+
+void main(List<String> args) async {
+  // Проверяем аргументы командной строки
+  if (args.length < 3) {
+    print('Использование: dart pan-tompkins.dart <путь_к_папке> <номер_записи> <канал>');
+    print('Пример: dart pan-tompkins.dart ./assets/ECG_DB/AHADB 1201 1');
+    print('');
+    print('Аргументы:');
+    print('  путь_к_папке   - Путь к папке с файлами записи');
+    print('  номер_записи   - Номер записи (например, 1201)');
+    print('  канал          - Номер канала (0 или 1)');
+    print('');
+    print('Программа:');
+    print('  - Загружает данные через rdsamp');
+    print('  - Детектирует R-пики алгоритмом Pan-Tompkins');
+    print('  - Сохраняет пики в .gqrs аннотацию с помощью wrann');
+    exit(1);
+  }
+
+  final folderPath = args[0];
+  final recordNumber = args[1];
+  final channel = int.parse(args[2]);
+
+  await processRecording(folderPath, recordNumber, channel);
+}
+
+/// Переменные для фильтра высоких частот
 double hprevFilterd = 0.0;
 double hprevUnFiltered = 0.0;
 double hprevprevUnfiltered = 0.0;
 double hprevprevFilterd = 0.0;
 
-/// Vars for Low Pass Filter
+/// Переменные для фильтра низких частот
 double lprevFilterd = 0.0;
 double lprevUnFiltered = 0.0;
 double lprevprevUnfiltered = 0.0;
 double lprevprevFilterd = 0.0;
 
-/// Low Pass filter
+/// Фильтр низких частот
 double applyLowPassFilter(double val) {
   double y = 0.2564056711091054 * val +
       0.14992656822522105 * lprevFilterd +
@@ -431,7 +719,7 @@ double applyLowPassFilter(double val) {
   return y;
 }
 
-/// High Pass filter
+/// Фильтр высоких частот
 applyHighPassFilter(double val) {
   double y = 0.9736978852077434 * val +
       1.9467038494842983 * hprevFilterd +
@@ -443,209 +731,4 @@ applyHighPassFilter(double val) {
   hprevprevUnfiltered = hprevUnFiltered;
   hprevUnFiltered = val;
   return y;
-}
-
-List<double> readECGData(String filePath) {
-  List<double> data = [];
-  try {
-    File file = File(filePath);
-    List<String> lines = file.readAsLinesSync();
-    
-    print('File: ${filePath.split(Platform.pathSeparator).last}');
-    print('Total lines: ${lines.length}');
-    
-    // Skip header
-    for (int i = 1; i < lines.length; i++) {
-      if (lines[i].trim().isEmpty) continue;
-      
-      List<String> parts = lines[i].split(',');
-      
-      // Debug: print first few lines
-      if (i <= 5) {
-        //print('Line $i: "${lines[i]}"');
-        //print('Parts: $parts');
-        //print('Parts length: ${parts.length}');
-      }
-      
-      if (parts.length >= 2) {
-        try {
-          // Try to parse the second column
-          String valueStr = parts[1].trim();
-          
-          // Debug for first few lines
-          if (i <= 5) {
-            //print('Value string: "$valueStr"');
-          }
-          
-          // Skip if value is empty or not a number
-          if (valueStr.isEmpty) {
-            if (i <= 5) //print('Skipping empty value at line $i');
-            continue;
-          }
-          
-          double value = double.parse(valueStr);
-          data.add(value);
-          
-        } catch (e) {
-          //print('Error parsing line $i: "${lines[i]}"');
-          //print('Parts: $parts');
-          //print('Error: $e');
-          // Continue with next line instead of crashing
-          continue;
-        }
-      } else {
-        if (i <= 10) {
-          //print('Line $i has less than 2 columns: ${parts.length}');
-        }
-      }
-    }
-    
-    //print('Successfully parsed ${data.length} samples');
-    
-  } catch (e) {
-    print('Error reading file: $e');
-    rethrow;
-  }
-  return data;
-}
-
-/// Write peaks to CSV file with time format (MM:SS.mmm)
-void writePeaksToCSV(String filePath, List<int> peaks, int samplingFreq) {
-  try {
-    File file = File(filePath);
-    StringBuffer content = StringBuffer();
-    
-    for (int peak in peaks) {
-      // Вычисляем время в секундах
-      double timeInSeconds = peak / samplingFreq;
-      // Форматируем как MM:SS.mmm
-      int minutes = timeInSeconds ~/ 60;
-      double seconds = timeInSeconds % 60;
-      int wholeSeconds = seconds.floor();
-      int milliseconds = ((seconds - wholeSeconds) * 1000).round();
-      
-      String formattedTime = '${minutes.toString().padLeft(1, '0')}:${wholeSeconds.toString().padLeft(2, '0')}.${milliseconds.toString().padLeft(3, '0')}';
-      
-      // Записываем строку: время, номер отсчета, N (разделитель - пробел)
-      content.writeln('$formattedTime $peak N');
-    }
-    
-    file.writeAsStringSync(content.toString());
-    print('Peaks saved to: $filePath');
-  } catch (e) {
-    print('Error writing file: $e');
-    rethrow;
-  }
-}
-
-/// Process all CSV files in a directory
-void processDirectory(String sourceDir, String outputDir, int samplingFreq) {
-  Directory source = Directory(sourceDir);
-  if (!source.existsSync()) {
-    print('Source directory does not exist: $sourceDir');
-    return;
-  }
-
-  // Create output directory if it doesn't exist
-  Directory output = Directory(outputDir);
-  if (!output.existsSync()) {
-    output.createSync(recursive: true);
-  }
-
-  PanTompkinsQRS qrsDetector = PanTompkinsQRS();
-  
-  // Find all CSV files
-  List<FileSystemEntity> files = source.listSync();
-  List<File> csvFiles = [];
-  
-  for (var entity in files) {
-    if (entity is File && entity.path.endsWith('.csv')) {
-      csvFiles.add(entity);
-    }
-  }
-
-  if (csvFiles.isEmpty) {  // Убрали скобки ()
-    print('No CSV files found in the source directory.');
-    return;
-  }
-
-  print('Found ${csvFiles.length} CSV file(s) to process.');
-
-  for (File file in csvFiles) {
-    try {
-      print('\nProcessing: ${file.path}');
-      
-      // Read ECG data
-      List<double> data = readECGData(file.path);
-      print('Data length: ${data.length} samples');
-      
-      if (data.isEmpty) {
-        print('Warning: Empty data in file, skipping...');
-        continue;
-      }
-
-      // Apply filters
-      List<double> filteredData = [for (double i in data) applyHighPassFilter(i)];
-      filteredData = [for (double i in filteredData) applyLowPassFilter(i)];
-
-      // Detect peaks
-      late List<int> peaks;
-      late double heartRate;
-      (heartRate, peaks) = qrsDetector.solve(filteredData, samplingFreq);
-      
-      print('Total Peaks Detected: ${peaks.length}');
-      print('Heart Rate: ${heartRate.toStringAsFixed(2)} BPM');
-
-      // Generate output filename
-      String fileName = file.path.split(Platform.pathSeparator).last;
-      
-      // Remove _channel1 or _ch1 or similar patterns from filename
-      // This regex removes _channel followed by digits or _ch followed by digits
-      String cleanFileName = fileName.replaceAll(RegExp(r'_channel\d+|_ch\d+'), '');
-      // Also remove any remaining _1, _2 patterns at the end (but keep if it's part of the name)
-      cleanFileName = cleanFileName.replaceAll(RegExp(r'_\d+(?=\.csv$)'), '');
-      
-      String outputFileName = cleanFileName.replaceAll('.csv', '_peaks.csv');
-      String outputPath = '$outputDir${Platform.pathSeparator}$outputFileName';
-      
-      // Fix: Ensure output path uses correct separators
-      outputPath = outputPath.replaceAll('/', Platform.pathSeparator);
-      outputPath = outputPath.replaceAll('\\', Platform.pathSeparator);
-
-      // Save peaks
-      writePeaksToCSV(outputPath, peaks, samplingFreq);
-      
-      // Reset filter states for next file
-      hprevFilterd = 0.0;
-      hprevUnFiltered = 0.0;
-      hprevprevUnfiltered = 0.0;
-      hprevprevFilterd = 0.0;
-      lprevFilterd = 0.0;
-      lprevUnFiltered = 0.0;
-      lprevprevUnfiltered = 0.0;
-      lprevprevFilterd = 0.0;
-      
-    } catch (e) {
-      print('Error processing file ${file.path}: $e');
-    }
-  }
-}
-
-void main(List<String> args) {
-  // Check command line arguments
-  if (args.length < 3) {
-    print('Usage: dart pan-tompkins.dart <source_directory> <output_directory> <sampling_frequency>');
-    print('Example: dart pan-tompkins.dart ./data ./output 250');
-    exit(1);
-  }
-
-  String sourceDir = args[0];
-  String outputDir = args[1];
-  int samplingFreq = int.parse(args[2]);
-
-  print('Source directory: $sourceDir');
-  print('Output directory: $outputDir');
-  print('Sampling frequency: $samplingFreq Hz');
-
-  processDirectory(sourceDir, outputDir, samplingFreq);
 }
