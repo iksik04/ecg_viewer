@@ -699,19 +699,36 @@ double hprevUnFiltered = 0.0;
 double hprevprevUnfiltered = 0.0;
 double hprevprevFilterd = 0.0;
 
+//fs = 125 Hz
+//List<double> bhp = [0.9736978852077434, -1.9473957704154865, 0.9736978852077433];
+//List<double> ahp = [1.9467038494842983, -0.9480876913466759];
+
+//fs = 250 Hz
+List<double> bhp = [0.98413352, -1.96826703, 0.98413352];
+List<double> ahp = [1.96801527, -0.96851879];
+
 /// Переменные для фильтра низких частот
 double lprevFilterd = 0.0;
 double lprevUnFiltered = 0.0;
 double lprevprevUnfiltered = 0.0;
 double lprevprevFilterd = 0.0;
 
+
+//fs = 125 Hz
+//List<double> blp = [0.2564056711091054, 0.5128113422182107, 0.2564056711091051];
+//List<double> alp = [0.14992656822522105, -0.1755492526616423];
+
+//fs = 250 Hz
+List<double> blp = [0.10655456, 0.21310912, 0.10655456];
+List<double> alp = [0.88854742, -0.31476566];
+
 /// Фильтр низких частот
 double applyLowPassFilter(double val) {
-  double y = 0.2564056711091054 * val +
-      0.14992656822522105 * lprevFilterd +
-      0.5128113422182107 * lprevUnFiltered -
-      0.1755492526616423 * lprevprevFilterd +
-      0.2564056711091051 * lprevprevUnfiltered;
+  double y = blp[0] * val +
+      alp[0] * lprevFilterd +
+      blp[1] * lprevUnFiltered +
+      alp[1] * lprevprevFilterd +
+      blp[2] * lprevprevUnfiltered;
   lprevprevFilterd = lprevFilterd;
   lprevFilterd = y;
   lprevprevUnfiltered = lprevUnFiltered;
@@ -721,11 +738,11 @@ double applyLowPassFilter(double val) {
 
 /// Фильтр высоких частот
 applyHighPassFilter(double val) {
-  double y = 0.9736978852077434 * val +
-      1.9467038494842983 * hprevFilterd +
-      -1.9473957704154865 * hprevUnFiltered +
-      -0.9480876913466759 * hprevprevFilterd +
-      0.9736978852077433 * hprevprevUnfiltered;
+  double y = bhp[0] * val +
+      ahp[0] * hprevFilterd +
+      bhp[1] * hprevUnFiltered +
+      ahp[1] * hprevprevFilterd +
+      bhp[2] * hprevprevUnfiltered;
   hprevprevFilterd = hprevFilterd;
   hprevFilterd = y;
   hprevprevUnfiltered = hprevUnFiltered;
