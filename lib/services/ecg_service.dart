@@ -5,8 +5,8 @@ import 'package:fl_chart/fl_chart.dart';
 import '../models/ecg_data.dart';
 
 class ECGService {
-  final String _rdsampPath = 'rdsamp';
-  final String _rdannPath = 'rdann';
+  final String _rdsampPath = 'C:/Instruments/wfdb_utils/wfdb-software-package-10.6.2/build/bin/rdsamp';
+  final String _rdannPath = 'C:/Instruments/wfdb_utils/wfdb-software-package-10.6.2/build/bin/rdann';
   
   /// Загрузка данных ЭКГ с использованием rdsamp и rdann
   Future<ECGData> loadECGData(String folder, String number) async {

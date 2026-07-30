@@ -3,6 +3,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+/// Глобальная переменная для пути к утилитам WFDB
+/// По умолчанию пустая строка - утилиты ищутся в PATH
+/// Можно задать полный путь, например: '/usr/local/bin/' или 'C:\\WFDB\\bin\\'
+String wfdbBinPath = 'C:/Instruments/wfdb_utils/wfdb-software-package-10.6.2/build/bin';
+
 class PanTompkinsQRS {
   List<double> bandPassFilter(List<double> signal) {
     List<double> sig = List.from(signal);
@@ -408,6 +413,23 @@ double average(List signal) {
   return summ / signal.length;
 }
 
+/// Получить полный путь к утилите WFDB
+String getWfdbCommand(String command) {
+  if (wfdbBinPath.isEmpty) {
+    return command;
+  }
+  // Добавляем разделитель пути, если его нет в конце
+  String path = wfdbBinPath;
+  if (!path.endsWith(Platform.pathSeparator)) {
+    path += Platform.pathSeparator;
+  }
+  // На Windows добавляем .exe если нужно
+  if (Platform.isWindows && !command.endsWith('.exe')) {
+    return path + command + '.exe';
+  }
+  return path + command;
+}
+
 /// Чтение частоты дискретизации из файла .hea
 Future<double> getSampleRate(String filePath) async {
   try {
@@ -453,8 +475,9 @@ Future<List<double>> loadECGDataWithRDSamp(String filePath, int channel) async {
       return [];
     }
 
+    final rdsampCmd = getWfdbCommand('rdsamp');
     final process = await Process.start(
-      'rdsamp',
+      rdsampCmd,
       ['-r', filePath, '-f', '0', '-t', 'end', '-p', '-v'],
       mode: ProcessStartMode.normal,
     );
@@ -530,8 +553,9 @@ Future<void> writePeaksWithWRAnn(String filePath, List<int> peaks, int fs) async
     }
     
     // Запускаем процесс
+    final wrannCmd = getWfdbCommand('wrann');
     final process = await Process.start(
-      'wrann',
+      wrannCmd,
       ['-r', filePath, '-a', 'gqrs'],
       mode: ProcessStartMode.normal,
     );
@@ -563,7 +587,8 @@ Future<void> writePeaksWithWRAnn(String filePath, List<int> peaks, int fs) async
 /// Проверка доступности rdsamp
 Future<bool> isRDSampAvailable() async {
   try {
-    final result = await Process.run('rdsamp', ['-v']);
+    final cmd = getWfdbCommand('rdsamp');
+    final result = await Process.run(cmd, ['-v']);
     return true;
   } catch (e) {
     try {
@@ -583,7 +608,8 @@ Future<bool> isRDSampAvailable() async {
 /// Проверка доступности wrann
 Future<bool> isWRAnnAvailable() async {
   try {
-    final result = await Process.run('wrann', ['-v']);
+    final cmd = getWfdbCommand('wrann');
+    final result = await Process.run(cmd, ['-v']);
     return true;
   } catch (e) {
     try {
@@ -606,18 +632,20 @@ Future<void> processRecording(String folderPath, String recordNumber, int channe
   print('Обработка: $folderPath, запись $recordNumber, канал $channel');
 
 
-  // Проверяем доступность утилит
+  /*// Проверяем доступность утилит
   if (!await isRDSampAvailable()) {
     print('Ошибка: rdsamp не найден. Установите WFDB toolkit.');
     print('Проверьте, что rdsamp доступен в командной строке.');
+    print('Или установите переменную wfdbBinPath в коде.');
     return;
   }
   
   if (!await isWRAnnAvailable()) {
     print('Ошибка: wrann не найден. Установите WFDB toolkit.');
     print('Проверьте, что wrann доступен в командной строке.');
+    print('Или установите переменную wfdbBinPath в коде.');
     return;
-  }
+  }*/
 
   // Путь к файлам записи (без расширения)
   final filePath = '$folderPath/$recordNumber';
@@ -683,6 +711,9 @@ void main(List<String> args) async {
     print('  - Загружает данные через rdsamp');
     print('  - Детектирует R-пики алгоритмом Pan-Tompkins');
     print('  - Сохраняет пики в .gqrs аннотацию с помощью wrann');
+    print('');
+    print('Для указания пути к утилитам WFDB установите переменную wfdbBinPath');
+    print('Например: wfdbBinPath = "C:/WFDB/bin/";');
     exit(1);
   }
 
