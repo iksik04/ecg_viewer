@@ -1,3 +1,0 @@
-file: CU_report.txt	ecgeval		30 July 2026
-Evaluation of `gqrs' on the Creighton University Sustained Ventricular Arrhythmia Database
-
