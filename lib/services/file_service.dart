@@ -1,28 +1,27 @@
-import 'package:flutter/services.dart' show rootBundle, AssetManifest;
+import 'dart:io';
 import 'dart:async';
+import '../constants/app_constants.dart';
 
 class FileService {
+  static const String _basePath = AppStrings.basePath;
   static Map<String, List<String>>? _cachedRecordsByFolder;
   
   // Получение списка доступных папок (баз данных)
   Future<List<String>> getAvailableFolders() async {
     try {
-      final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
-      final allAssets = manifest.listAssets();
+      final directory = Directory(_basePath);
+      if (!await directory.exists()) {
+        print('Директория $_basePath не найдена');
+        return [];
+      }
       
-      // Извлекаем уникальные имена папок из assets/ECG_DB/
-      final folders = allAssets
-          .where((asset) => asset.startsWith('assets/ECG_DB/'))
-          .map((asset) {
-            final parts = asset.split('/');
-            if (parts.length >= 3) {
-              return parts[2]; // Имя базы данных (AHADB, CUDB, и т.д.)
-            }
-            return '';
-          })
-          .where((folder) => folder.isNotEmpty)
-          .toSet()
-          .toList();
+      final folders = <String>[];
+      await for (final entity in directory.list()) {
+        if (entity is Directory) {
+          final folderName = entity.path.split(Platform.pathSeparator).last;
+          folders.add(folderName);
+        }
+      }
       
       folders.sort();
       return folders;
@@ -57,27 +56,27 @@ class FileService {
   }
   
   Future<List<String>> _scanRecordsInFolder(String folder) async {
-    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
-    final allAssets = manifest.listAssets();
+    final folderPath = '$_basePath${Platform.pathSeparator}$folder';
+    final directory = Directory(folderPath);
     
-    // Фильтруем файлы из указанной папки
-    final folderPath = 'assets/ECG_DB/$folder/';
-    final assetsInFolder = allAssets
-        .where((asset) => asset.startsWith(folderPath))
-        .toList();
+    if (!await directory.exists()) {
+      return [];
+    }
     
-    // Извлекаем уникальные имена записей из файлов с расширением .hea (регистронезависимо)
     final Set<String> records = {};
-    for (final asset in assetsInFolder) {
-      final fileName = asset.split('/').last;
-      
-      // Проверяем, что файл имеет расширение .hea (регистронезависимо)
-      final lowerFileName = fileName.toLowerCase();
-      if (lowerFileName.endsWith('.hea')) {
-        // Убираем расширение (все 4 символа, включая точку)
-        final recordName = fileName.substring(0, fileName.length - 4);
-        if (recordName.isNotEmpty) {
-          records.add(recordName);
+    
+    await for (final entity in directory.list()) {
+      if (entity is File) {
+        final fileName = entity.path.split(Platform.pathSeparator).last;
+        
+        // Проверяем, что файл имеет расширение .hea (регистронезависимо)
+        final lowerFileName = fileName.toLowerCase();
+        if (lowerFileName.endsWith('.hea')) {
+          // Убираем расширение (все 4 символа, включая точку)
+          final recordName = fileName.substring(0, fileName.length - 4);
+          if (recordName.isNotEmpty) {
+            records.add(recordName);
+          }
         }
       }
     }
@@ -103,49 +102,28 @@ class FileService {
     return sortedRecords;
   }
   
-  // Проверка существования файла (регистронезависимо)
+  // Проверка существования файла
   Future<bool> fileExists(String filePath) async {
     try {
-      final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
-      final allAssets = manifest.listAssets();
-      
-      // Ищем файл регистронезависимо
-      final fileName = filePath.split('/').last;
-      final lowerFileName = fileName.toLowerCase();
-      
-      for (final asset in allAssets) {
-        if (asset.endsWith('/$fileName') || 
-            asset.toLowerCase().endsWith('/$lowerFileName')) {
-          return true;
-        }
-      }
-      
-      // Если не нашли через манифест, пробуем загрузить напрямую
-      try {
-        await rootBundle.loadString(filePath);
-        return true;
-      } catch (_) {
-        return false;
-      }
+      final file = File(filePath);
+      return await file.exists();
     } catch (e) {
-      try {
-        await rootBundle.loadString(filePath);
-        return true;
-      } catch (_) {
-        return false;
-      }
+      return false;
     }
+  }
+  
+  // Получение полного пути к файлу
+  String getFilePath(String folder, String record, String extension) {
+    return '$_basePath${Platform.pathSeparator}$folder${Platform.pathSeparator}$record.$extension';
   }
   
   // Получение списка всех файлов для записи
   Future<Map<String, bool>> getRecordFiles(String folder, String record) async {
-    final basePath = 'assets/ECG_DB/$folder/$record';
     final extensions = ['aed', 'atr', 'hea', 'dat', 'gqrs'];
     final result = <String, bool>{};
     
     for (final ext in extensions) {
-      // Проверяем с разными вариантами регистра
-      final filePath = '$basePath.$ext';
+      final filePath = getFilePath(folder, record, ext);
       final exists = await fileExists(filePath);
       result[ext] = exists;
     }
@@ -153,19 +131,13 @@ class FileService {
     return result;
   }
   
-  // Получение содержимого .hea файла (заголовка записи) - регистронезависимо
+  // Получение содержимого .hea файла (заголовка записи)
   Future<String?> getHeaderContent(String folder, String record) async {
     try {
-      // Пробуем разные варианты расширения
-      final extensions = ['hea', 'HEA', 'Hea', 'hEA'];
-      for (final ext in extensions) {
-        try {
-          final filePath = 'assets/ECG_DB/$folder/$record.$ext';
-          final content = await rootBundle.loadString(filePath);
-          return content;
-        } catch (_) {
-          continue;
-        }
+      final filePath = getFilePath(folder, record, 'hea');
+      final file = File(filePath);
+      if (await file.exists()) {
+        return await file.readAsString();
       }
       return null;
     } catch (e) {

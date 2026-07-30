@@ -65,13 +65,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  assets:
-     - assets/ECG_DB/AHADB/
-     - assets/ECG_DB/CUDB/
-     - assets/ECG_DB/EDB/
-     - assets/ECG_DB/MITDB/
-     - assets/ECG_DB/NSTDB/
-     - assets/ECG_DB/VFDB/
+  #assets:
+     #- assets
     # - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

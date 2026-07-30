@@ -83,4 +83,9 @@ class AppStrings {
   static const String loadingData = 'Загрузка данных...';
   static const String noData = 'Нет данных ECG';
   static const String errorLoading = 'Ошибка загрузки данных:';
+
+  // Пути
+  static const String rdsampPath = 'C:/Instruments/wfdb_utils/wfdb-software-package-10.6.2/build/bin/rdsamp';
+  static const String rdannPath = 'C:/Instruments/wfdb_utils/wfdb-software-package-10.6.2/build/bin/rdann';
+  static const String basePath = r'C:\Users\Public\Work\ECG_DB';
 }

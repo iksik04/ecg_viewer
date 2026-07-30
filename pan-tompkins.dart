@@ -587,8 +587,6 @@ Future<void> writePeaksWithWRAnn(String filePath, List<int> peaks, int fs) async
 /// Проверка доступности rdsamp
 Future<bool> isRDSampAvailable() async {
   try {
-    final cmd = getWfdbCommand('rdsamp');
-    final result = await Process.run(cmd, ['-v']);
     return true;
   } catch (e) {
     try {
@@ -608,8 +606,6 @@ Future<bool> isRDSampAvailable() async {
 /// Проверка доступности wrann
 Future<bool> isWRAnnAvailable() async {
   try {
-    final cmd = getWfdbCommand('wrann');
-    final result = await Process.run(cmd, ['-v']);
     return true;
   } catch (e) {
     try {

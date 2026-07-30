@@ -3,30 +3,54 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/ecg_data.dart';
+import '../constants/app_constants.dart';
 
 class ECGService {
-  final String _rdsampPath = 'C:/Instruments/wfdb_utils/wfdb-software-package-10.6.2/build/bin/rdsamp';
-  final String _rdannPath = 'C:/Instruments/wfdb_utils/wfdb-software-package-10.6.2/build/bin/rdann';
+  final String _rdsampPath = AppStrings.rdsampPath;
+  final String _rdannPath = AppStrings.rdannPath;
+  static const String _basePath = AppStrings.basePath;
   
   /// Загрузка данных ЭКГ с использованием rdsamp и rdann
   Future<ECGData> loadECGData(String folder, String number) async {
     try {
-      // Путь к файлам записи (без расширения)
-      final filePath = 'assets/ECG_DB/$folder/$number';
+      // Для WFDB утилит нужно передавать имя записи без расширения
+      // и без полного пути, если мы не используем переменную WFDB
+      final recordName = '$folder/$number';
+      final fullPath = '$_basePath\\$folder\\$number';
+      
+      print('Загрузка данных: $recordName');
+      print('Полный путь: $fullPath');
+      
+      // Проверяем существование файлов
+      final heaFile = File(fullPath + '.hea');
+      if (!await heaFile.exists()) {
+        print('Файл $fullPath.hea не найден');
+        return ECGData(spots: [], truePeaks: [], predPeaks: []);
+      }
+      
+      final datFile = File(fullPath + '.dat');
+      if (!await datFile.exists()) {
+        print('Файл $fullPath.dat не найден');
+        return ECGData(spots: [], truePeaks: [], predPeaks: []);
+      }
       
       // Загружаем данные через rdsamp
-      final spots = await _loadSpotsWithRDSamp(filePath);
+      final spots = await _loadSpotsWithRDSamp(recordName, fullPath);
       
       // Загружаем истинные пики из .atr файла
-      final truePeaks = await _loadPeaksWithRDAnn(filePath, 'atr');
+      final truePeaks = await _loadPeaksWithRDAnn(recordName, fullPath, 'atr');
       
       // Загружаем предсказанные пики из .gqrs файла
-      final predPeaks = await _loadPeaksWithRDAnn(filePath, 'gqrs');
+      final predPeaks = await _loadPeaksWithRDAnn(recordName, fullPath, 'gqrs');
+      
+      // Получаем частоту дискретизации
+      final sampleRate = await getSampleRate(fullPath);
       
       return ECGData(
         spots: spots,
         truePeaks: truePeaks,
         predPeaks: predPeaks,
+        sampleRate: sampleRate,
       );
     } catch (e) {
       print('Ошибка загрузки данных для папки $folder, записи #$number: $e');
@@ -35,20 +59,29 @@ class ECGService {
   }
   
   /// Загрузка данных через rdsamp
-  Future<List<FlSpot>> _loadSpotsWithRDSamp(String filePath) async {
+  Future<List<FlSpot>> _loadSpotsWithRDSamp(String recordName, String fullPath) async {
     try {
-      // Проверяем существование .dat файла
-      final datFile = File(filePath + '.dat');
-      if (!await datFile.exists()) {
-        print('Файл $filePath.dat не найден');
+      // Проверяем существование .hea файла
+      final heaFile = File(fullPath + '.hea');
+      if (!await heaFile.exists()) {
+        print('Файл $fullPath.hea не найден');
         return [];
       }
+      
+      // Используем путь с прямой косой чертой для совместимости с WFDB
+      // Важно: передаем имя записи, а не полный путь
+      final recordPath = recordName.replaceAll('\\', '/');
+      
+      print('Вызов rdsamp: $_rdsampPath -r $recordPath -f 0 -t end -p -v');
       
       // Запускаем rdsamp для чтения данных
       final process = await Process.start(
         _rdsampPath,
-        ['-r', filePath, '-f', '0', '-t', 'end', '-p', '-v'],
+        ['-r', recordPath, '-f', '0', '-t', 'end', '-p', '-v'],
         mode: ProcessStartMode.normal,
+        environment: {
+          'WFDB': _basePath,
+        },
       );
       
       // Читаем вывод
@@ -72,25 +105,28 @@ class ECGService {
   }
   
   /// Загрузка пиков через rdann
-  Future<List<int>> _loadPeaksWithRDAnn(String filePath, String annotationType) async {
+  Future<List<int>> _loadPeaksWithRDAnn(String recordName, String fullPath, String annotationType) async {
     try {
       // Проверяем существование файла аннотации
-      final annFile = File('$filePath.$annotationType');
+      final annFile = File('$fullPath.$annotationType');
       if (!await annFile.exists()) {
-        print('Файл $filePath.$annotationType не найден');
+        print('Файл $fullPath.$annotationType не найден');
         return [];
       }
-      print('Вызов rdann: rdann -r $filePath -a $annotationType -f 0 -t end');
+      
+      // Используем путь с прямой косой чертой для совместимости с WFDB
+      final recordPath = recordName.replaceAll('\\', '/');
+      
+      print('Вызов rdann: $_rdannPath -r $recordPath -a $annotationType -f 0 -t end');
+      
       // Запускаем rdann для чтения аннотаций
-      // -r: путь к файлу записи
-      // -a: тип аннотации (atr, gqrs, и т.д.)
-      // -p: вывод в формате с временными метками
-      // -f: начальное время (0)
-      // -t: конечное время (читаем весь файл)
       final process = await Process.start(
         _rdannPath,
-        ['-r', filePath, '-a', annotationType, '-f', '0', '-t', 'end'],
+        ['-r', recordPath, '-a', annotationType, '-f', '0', '-t', 'end'],
         mode: ProcessStartMode.normal,
+        environment: {
+          'WFDB': _basePath,
+        },
       );
       
       // Читаем вывод
@@ -105,7 +141,9 @@ class ECGService {
       }
       
       // Парсим вывод и возвращаем индексы пиков
-      return _parseRDAnnOutput(output);
+      final peaks = _parseRDAnnOutput(output);
+      print('Загружено ${peaks.length} пиков из аннотаций $annotationType');
+      return peaks;
       
     } catch (e) {
       print('Ошибка выполнения rdann для $annotationType: $e');
@@ -149,7 +187,7 @@ class ECGService {
     return spots;
   }
   
-   List<int> _parseRDAnnOutput(String output) {
+  List<int> _parseRDAnnOutput(String output) {
     final lines = output.split('\n')
         .where((line) => line.trim().isNotEmpty)
         .toList();
@@ -167,22 +205,15 @@ class ECGService {
         final parts = line.trim().split(RegExp(r'\s+'));
         if (parts.length < 3) continue;
         
-        // Первая колонка - время в формате MM:SS.mmm
-        final timeStr = parts[0];
-        final timeInSeconds = _parseTimeString(timeStr);
-        if (timeInSeconds == null) continue;
-        
         // Вторая колонка - номер выборки (sample number)
         final sampleNumber = int.tryParse(parts[1]);
         if (sampleNumber == null) continue;
         
         // Третья колонка - тип аннотации
-        final annotationType = parts[2];
+        final annType = parts[2];
         
         // Проверяем, является ли аннотация QRS-комплексом
-        if (_isQRSAnnotation(annotationType)) {
-          // Используем номер выборки как индекс
-          // Номера выборок обычно начинаются с 0
+        if (_isQRSAnnotation(annType)) {
           if (sampleNumber >= 0) {
             peakIndices.add(sampleNumber);
           }
@@ -195,29 +226,6 @@ class ECGService {
     
     print('Загружено ${peakIndices.length} пиков из аннотаций');
     return peakIndices;
-  }
-  
-  /// Парсинг времени из формата "MM:SS.mmm" в секунды
-  double? _parseTimeString(String timeStr) {
-    try {
-      // Формат: MM:SS.mmm или MM:SS
-      final parts = timeStr.split(':');
-      if (parts.length != 2) return null;
-      
-      final minutes = int.parse(parts[0]);
-      final secondsPart = parts[1];
-      
-      // Разделяем секунды и миллисекунды
-      final secParts = secondsPart.split('.');
-      final seconds = int.parse(secParts[0]);
-      final milliseconds = secParts.length > 1 
-          ? int.parse(secParts[1].padRight(3, '0').substring(0, 3))
-          : 0;
-      
-      return minutes * 60 + seconds + milliseconds / 1000.0;
-    } catch (e) {
-      return null;
-    }
   }
   
   /// Определение, является ли аннотация QRS-комплексом
@@ -248,9 +256,9 @@ class ECGService {
   }
   
   /// Получение частоты дискретизации из .hea файла
-  Future<double> getSampleRate(String filePath) async {
+  Future<double> getSampleRate(String fullPath) async {
     try {
-      final heaFile = File(filePath + '.hea');
+      final heaFile = File(fullPath + '.hea');
       if (!await heaFile.exists()) {
         return 360.0; // Значение по умолчанию для MIT-BIH
       }
